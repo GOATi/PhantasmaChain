@@ -1,6 +1,5 @@
-﻿using Phantasma.Cryptography.EdDSA;
-using Phantasma.Cryptography.Ring;
-using System;
+﻿using Phantasma.Core;
+using Phantasma.Cryptography.ECC;
 using System.IO;
 
 namespace Phantasma.Cryptography
@@ -17,15 +16,9 @@ namespace Phantasma.Cryptography
             hash.SerializeData(writer);
         }
 
-        public static void WriteSignature(this BinaryWriter writer, Signature signature)
+        public static void WriteSignature(this BinaryWriter writer, ECDsaSignature signature)
         {
-            if (signature == null)
-            {
-                writer.Write((byte)SignatureKind.None);
-                return;
-            }
-
-            writer.Write((byte)signature.Kind);
+            Throw.IfNull(signature, nameof(signature));
             signature.SerializeData(writer);
         }
 
@@ -43,32 +36,11 @@ namespace Phantasma.Cryptography
             return hash;
         }
 
-        public static Signature ReadSignature(this BinaryReader reader)
+        public static ECDsaSignature ReadSignature(this BinaryReader reader)
         {
-            var kind = (SignatureKind)reader.ReadByte();
-
-            switch (kind)
-            {
-                case SignatureKind.None:
-                    return null;
-
-                case SignatureKind.Ed25519:
-                    {
-                        var signature = new Ed25519Signature();
-                        signature.UnserializeData(reader);
-                        return signature;
-                    }
-
-                case SignatureKind.Ring:
-                    {
-                        var signature = new RingSignature();
-                        signature.UnserializeData(reader);
-                        return signature;
-                    }
-
-                default:
-                    throw new NotImplementedException("read signature: " + kind);
-            }
+            var signature = new ECDsaSignature();
+            signature.UnserializeData(reader);
+            return signature;
         }
     }
 }

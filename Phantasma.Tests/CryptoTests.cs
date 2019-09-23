@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 
 using Phantasma.Cryptography;
-using Phantasma.Core.Utils;
 using Phantasma.Numerics;
 using Phantasma.Cryptography.Ring;
 using Phantasma.Cryptography.ECC;
@@ -49,34 +48,12 @@ namespace Phantasma.Tests
         }
 
         [TestMethod]
-        public void EdDSA()
-        {
-            var keys = KeyPair.Generate();
-            Assert.IsTrue(keys.PrivateKey.Length == KeyPair.PrivateKeyLength);
-            Assert.IsTrue(keys.Address.PublicKey.Length == Address.PublicKeyLength);
-
-            var msg = "Hello phantasma";
-
-            var msgBytes = Encoding.ASCII.GetBytes(msg);
-            var signature = keys.Sign(msgBytes);
-
-            var verified = signature.Verify(msgBytes, keys.Address);
-            Assert.IsTrue(verified);
-
-            // make sure that Verify fails for other addresses
-            var otherKeys = KeyPair.Generate();
-            Assert.IsFalse(otherKeys.Address == keys.Address);
-            verified = signature.Verify(msgBytes, otherKeys.Address);
-            Assert.IsFalse(verified);
-        }
-
-        [TestMethod]
         public void ECDsa()
         {
             var privateKey = Base16.Decode("6f6784731c4e526c97fa6a97b6f22e96f307588c5868bc2c545248bc31207eb1");
             Assert.IsTrue(privateKey.Length == 32);
 
-            var curve = ECCurve.Secp256r1;
+            var curve = ECDsaSignature.Curve;
 
             var publicKey = curve.G * privateKey;
 
@@ -84,7 +61,7 @@ namespace Phantasma.Tests
 
             var msgBytes = Encoding.ASCII.GetBytes(msg);
 
-            var signer = new ECDsa(privateKey, ECCurve.Secp256r1);
+            var signer = new ECDsa(privateKey, curve);
             var signature = signer.GenerateSignature(msgBytes);
             Assert.IsNotNull(signature);
 
@@ -172,6 +149,27 @@ namespace Phantasma.Tests
             var otherKeys = SeedPhraseGenerator.FromSeedPhrase(passphrase, seedPhrase);
             Assert.IsTrue(otherKeys != null);
             Assert.IsTrue(keys.Address.Text == otherKeys.Address.Text);
+        }
+
+        [TestMethod]
+        public void SharedSecret()
+        {
+            var keyA = KeyPair.Generate();
+            var keyB = KeyPair.Generate();
+            var secret = "Hello Phantasma!";
+
+            var encryptedMessage = EncryptionUtils.Encrypt(secret, keyA, keyB.Address);
+            var decryptedMessage = EncryptionUtils.Decrypt<string>(encryptedMessage, keyB, keyA.Address);
+
+            Assert.IsTrue(decryptedMessage == secret);
+
+            var curve = ECCurve.Secp256r1;
+            var pubA = curve.G * keyA.PrivateKey;
+            var pubB = curve.G * keyB.PrivateKey;
+
+            var sA = (pubB * keyA.PrivateKey).EncodePoint(false);
+            var sB = (pubA * keyB.PrivateKey).EncodePoint(false);
+            Assert.IsTrue(sA.SequenceEqual(sB));
         }
 
     }

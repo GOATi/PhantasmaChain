@@ -128,8 +128,8 @@ namespace Phantasma.Blockchain.Contracts.Native
             var msg = this.Runtime.Transaction.ToByteArray(false);
             Runtime.Expect(signature.Verify(msg, addresses), "ring signature failed");
 
-            var signatures = queue.signatures.All<Signature>();
-            foreach (RingSignature otherSignature in signatures)
+            var signatures = queue.signatures.All<RingSignature>();
+            foreach (var otherSignature in signatures)
             {
                 Runtime.Expect(!signature.IsLinked(otherSignature), "ring signature already linked");
             }

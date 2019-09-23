@@ -383,7 +383,7 @@ namespace Phantasma.Simulator
 
             Throw.If(!signees.Any(), "at least one signer required");
 
-            Signature[] existing = tx.Signatures;
+            var existing = tx.Signatures;
             var msg = tx.ToByteArray(false);
 
             tx = new Transaction(Nexus.Name, chain.Name, script, CurrentTime + TimeSpan.FromSeconds(Mempool.MaxExpirationTimeDifferenceInSeconds / 2));

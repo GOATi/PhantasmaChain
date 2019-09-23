@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using Phantasma.Core;
 using Phantasma.Cryptography;
-using Phantasma.Storage;
+using Phantasma.Cryptography.ECC;
 using Phantasma.Network.P2P.Messages;
 
 namespace Phantasma.Network.P2P
@@ -15,7 +15,7 @@ namespace Phantasma.Network.P2P
     {
         public Opcode Opcode { get; private set; }
         public Address Address { get; private set; }
-        public Signature Signature { get; private set; }
+        public ECDsaSignature Signature { get; private set; }
 
         public bool IsSigned => !Address.IsNull && Signature != null;
 

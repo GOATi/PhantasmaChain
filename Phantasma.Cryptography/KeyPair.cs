@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Linq;
-using Phantasma.Cryptography.EdDSA;
-using Phantasma.Numerics;
 using Phantasma.Core;
 using Phantasma.Core.Utils;
+using Phantasma.Cryptography.ECC;
 
 namespace Phantasma.Cryptography
 {
@@ -21,9 +20,11 @@ namespace Phantasma.Cryptography
             this.PrivateKey = new byte[PrivateKeyLength];
             ByteArrayUtils.CopyBytes(privateKey, 0, PrivateKey, 0, PrivateKeyLength); 
 
-            var publicKey = Ed25519.PublicKeyFromSeed(privateKey);
+            var publicKey = ECDsaSignature.Curve.G * privateKey;
+            var publicKeyBytes = publicKey.EncodePoint(true);
 
-            this.Address = new Address(publicKey);
+            publicKeyBytes = ByteArrayUtils.ConcatBytes(new byte[] { Address.UserOpcode }, publicKeyBytes);
+            this.Address = new Address(publicKeyBytes);
         }
 
         public override string ToString()
@@ -74,10 +75,11 @@ namespace Phantasma.Cryptography
             return x.Zip(y, (a, b) => (byte)(a ^ b)).ToArray();
         }
 
-        public Signature Sign(byte[] message)
+        public ECDsaSignature Sign(byte[] message)
         {
-            var sign = Ed25519.Sign(message, Ed25519.ExpandedPrivateKeyFromSeed(this.PrivateKey));
-            return new Ed25519Signature(sign);
+            var signer = new ECDsa(this.PrivateKey, ECDsaSignature.Curve);
+            var signature = signer.GenerateSignature(message);
+            return new ECDsaSignature(signature);
         }
     }
 }

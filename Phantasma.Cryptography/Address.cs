@@ -36,7 +36,7 @@ namespace Phantasma.Cryptography
             }
         }
 
-        public const int PublicKeyLength = 32;
+        public const int PublicKeyLength = 34;
         public const int MaxPlatformNameLength = 10;
 
         public bool IsSystem => _publicKey != null && (_publicKey.Length > 0 && _publicKey[0] == SystemOpcode || IsNull);
@@ -66,9 +66,9 @@ namespace Phantasma.Cryptography
             }
         }
 
-        private const byte UserOpcode = 75;
-        private const byte SystemOpcode = 85;
-        private const byte InteropOpcode = 102;
+        internal const byte UserOpcode = 226;
+        internal const byte SystemOpcode = 253;
+        internal const byte InteropOpcode = 235;
 
         private string _text;
         public string Text
@@ -119,8 +119,8 @@ namespace Phantasma.Cryptography
         public static Address FromHash(byte[] bytes)
         {
             var hash = CryptoExtensions.SHA256(bytes);
-            hash[0] = SystemOpcode;
-            return new Address(hash);
+            var pubKey = ByteArrayUtils.ConcatBytes(new byte[] { SystemOpcode, 0 }, hash);
+            return new Address(pubKey);
         }
 
         public static bool operator ==(Address A, Address B)
@@ -233,8 +233,7 @@ namespace Phantasma.Cryptography
 
         public static Address FromScript(byte[] script)
         {
-            var hash = script.SHA256();
-            return new Address(hash);
+            return Address.FromHash(script);
         }
 
         public int GetSize()

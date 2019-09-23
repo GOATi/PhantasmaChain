@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
+using Phantasma.Cryptography.ECC;
 using Phantasma.Numerics;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
@@ -56,7 +57,7 @@ namespace Phantasma.Blockchain.Contracts.Native
     public struct RelayReceipt : ISerializable
     {
         public RelayMessage message;
-        public Signature signature;
+        public ECDsaSignature signature;
 
         public void SerializeData(BinaryWriter writer)
         {

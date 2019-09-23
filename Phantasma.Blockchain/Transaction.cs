@@ -12,6 +12,7 @@ using Phantasma.Core.Types;
 using Phantasma.Storage.Utils;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
+using Phantasma.Cryptography.ECC;
 
 namespace Phantasma.Blockchain
 {
@@ -26,7 +27,7 @@ namespace Phantasma.Blockchain
 
         public byte[] Payload { get; private set; }
 
-        public Signature[] Signatures { get; private set; }
+        public ECDsaSignature[] Signatures { get; private set; }
         public Hash Hash { get; private set; }
 
         public static Transaction Unserialize(byte[] bytes)
@@ -107,7 +108,7 @@ namespace Phantasma.Blockchain
 
         }
 
-        public Transaction(string nexusName, string chainName, byte[] script, Timestamp expiration, IEnumerable<Signature> signatures = null)
+        public Transaction(string nexusName, string chainName, byte[] script, Timestamp expiration, IEnumerable<ECDsaSignature> signatures = null)
         {
             Throw.IfNull(script, nameof(script));
 
@@ -117,7 +118,7 @@ namespace Phantasma.Blockchain
             this.Expiration = expiration;
             this.Payload = new byte[0];
 
-            this.Signatures = signatures != null && signatures.Any() ? signatures.ToArray() : new Signature[0];
+            this.Signatures = signatures != null && signatures.Any() ? signatures.ToArray() : new ECDsaSignature[0];
 
             this.UpdateHash();
         }
@@ -137,9 +138,9 @@ namespace Phantasma.Blockchain
 
         public bool HasSignatures => Signatures != null && Signatures.Length > 0;
 
-        public void Sign(Signature signature)
+        public void Sign(ECDsaSignature signature)
         {
-            this.Signatures = this.Signatures.Union(new Signature[] { signature }).ToArray();
+            this.Signatures = this.Signatures.Union(new ECDsaSignature[] { signature }).ToArray();
         }
 
         public void Sign(KeyPair owner)
@@ -149,7 +150,7 @@ namespace Phantasma.Blockchain
             var msg = this.ToByteArray(false);
             var sig = owner.Sign(msg);
 
-            var sigs = new List<Signature>();
+            var sigs = new List<ECDsaSignature>();
 
             if (this.Signatures != null && this.Signatures.Length > 0)
             {
@@ -162,11 +163,6 @@ namespace Phantasma.Blockchain
 
         public bool IsSignedBy(Address address)
         {
-            return IsSignedBy(new Address[] { address });
-        }
-
-        public bool IsSignedBy(IEnumerable<Address> addresses)
-        {
             if (!HasSignatures)
             {
                 return false;
@@ -176,7 +172,7 @@ namespace Phantasma.Blockchain
 
             foreach (var signature in this.Signatures)
             {
-                if (signature.Verify(msg, addresses))
+                if (signature.Verify(msg, address))
                 {
                     return true;
                 }
@@ -214,7 +210,7 @@ namespace Phantasma.Blockchain
             try
             {
                 var signatureCount = (int)reader.ReadVarInt();
-                this.Signatures = new Signature[signatureCount];
+                this.Signatures = new ECDsaSignature[signatureCount];
                 for (int i = 0; i < signatureCount; i++)
                 {
                     Signatures[i] = reader.ReadSignature();
@@ -222,7 +218,7 @@ namespace Phantasma.Blockchain
             }
             catch
             {
-                this.Signatures = new Signature[0];
+                this.Signatures = new ECDsaSignature[0];
             }
 
             this.UpdateHash();

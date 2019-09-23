@@ -1,7 +1,7 @@
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
-using Phantasma.Cryptography.EdDSA;
+using Phantasma.Cryptography.ECC;
 using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
@@ -516,7 +516,7 @@ namespace Phantasma.Blockchain.Contracts.Native
         }
 
         #region OTC TRADES
-        public void SwapTokens(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger amount, BigInteger price, byte[] signature)
+        public void SwapTokens(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger amount, BigInteger price, byte[] serializedSignature)
         {
             Runtime.Expect(IsWitness(buyer), "invalid witness");
             Runtime.Expect(seller != buyer, "invalid seller");
@@ -542,7 +542,8 @@ namespace Phantasma.Blockchain.Contracts.Native
             };
 
             var msg = Serialization.Serialize(swap);
-            Runtime.Expect(Ed25519.Verify(signature, msg, seller.PublicKey), "invalid signature");
+            var signature = Serialization.Unserialize<ECDsaSignature>(serializedSignature);
+            Runtime.Expect(signature.Verify(msg, seller), "invalid signature");
 
             Runtime.Expect(Runtime.Nexus.TokenExists(quoteSymbol), "invalid quote token");
             var quoteToken = Runtime.Nexus.GetTokenInfo(quoteSymbol);
@@ -562,7 +563,7 @@ namespace Phantasma.Blockchain.Contracts.Native
             Runtime.Notify(EventKind.TokenReceive, buyer, new TokenEventData() { chainAddress = this.Address, symbol = baseSymbol, value = amount });
         }
 
-        public void SwapToken(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger tokenID, BigInteger price, byte[] signature)
+        public void SwapToken(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger tokenID, BigInteger price, byte[] serializedSignature)
         {
             Runtime.Expect(IsWitness(buyer), "invalid witness");
             Runtime.Expect(seller != buyer, "invalid seller");
@@ -588,7 +589,8 @@ namespace Phantasma.Blockchain.Contracts.Native
             };
 
             var msg = Serialization.Serialize(swap);
-            Runtime.Expect(Ed25519.Verify(signature, msg, seller.PublicKey), "invalid signature");
+            var signature = Serialization.Unserialize<ECDsaSignature>(serializedSignature);
+            Runtime.Expect(signature.Verify(msg, seller), "invalid signature");
 
             Runtime.Expect(Runtime.Nexus.TokenExists(quoteSymbol), "invalid quote token");
             var quoteToken = Runtime.Nexus.GetTokenInfo(quoteSymbol);

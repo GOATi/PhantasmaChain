@@ -13,7 +13,7 @@ namespace Phantasma.Cryptography.Ring
     // This scheme is the "realization 2" from "Linkable Ring Signatures: Security Models and New Schemes"
     // by Joseph K. Liu and Duncan S. Wong - Computational Science and Its Applications–ICCSA 2005
 
-    public class RingSignature : Signature, ILinkableSignature
+    public class RingSignature : ISerializable, ILinkableSignature
     {
         static readonly byte[] hash1String = Encoding.UTF8.GetBytes("~~~Hash one");
         static readonly byte[] hash2String = Encoding.UTF8.GetBytes("+++Hash two");
@@ -26,8 +26,6 @@ namespace Phantasma.Cryptography.Ring
         public BigInteger Y0 { get; private set; }
         public BigInteger S { get; private set; }
         public BigInteger[] C { get; private set; }
-
-        public override SignatureKind Kind => SignatureKind.Ring;
 
         internal RingSignature()
         {
@@ -46,7 +44,7 @@ namespace Phantasma.Cryptography.Ring
             return Y0.Equals(((RingSignature)other).Y0);
         }
 
-        public override bool Verify(byte[] message, IEnumerable<Address> addresses)
+        public bool Verify(byte[] message, IEnumerable<Address> addresses)
         {
             var publicKeys = addresses.Select(x => BigInteger.FromSignedArray(x.PublicKey)).ToArray();
             return this.VerifySignature(message, publicKeys);
@@ -160,7 +158,7 @@ namespace Phantasma.Cryptography.Ring
             return h1.Equals(b);
         }
 
-        public override void SerializeData(BinaryWriter writer)
+        public void SerializeData(BinaryWriter writer)
         {
             writer.WriteBigInteger(this.Y0);
             writer.WriteBigInteger(this.S);
@@ -171,7 +169,7 @@ namespace Phantasma.Cryptography.Ring
             }
         }
 
-        public override void UnserializeData(BinaryReader reader)
+        public void UnserializeData(BinaryReader reader)
         {
             this.Y0 = reader.ReadBigInteger();
             this.S = reader.ReadBigInteger();
