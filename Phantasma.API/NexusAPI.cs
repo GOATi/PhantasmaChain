@@ -19,6 +19,7 @@ using Phantasma.Core.Types;
 using Phantasma.Pay;
 using Phantasma.Core.Utils;
 using System.Text;
+using System.Numerics;
 
 namespace Phantasma.API
 {

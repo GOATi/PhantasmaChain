@@ -13,6 +13,7 @@ using Phantasma.Numerics;
 using Phantasma.VM.Utils;
 using Phantasma.Simulator;
 using System.Linq;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {

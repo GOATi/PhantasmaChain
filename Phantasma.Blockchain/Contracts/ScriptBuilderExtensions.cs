@@ -1,7 +1,6 @@
-﻿using System;
-using Phantasma.Numerics;
-using Phantasma.Cryptography;
+﻿using Phantasma.Cryptography;
 using Phantasma.VM.Utils;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts
 {

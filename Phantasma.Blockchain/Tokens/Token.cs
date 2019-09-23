@@ -5,6 +5,7 @@ using System;
 using Phantasma.Storage;
 using System.IO;
 using Phantasma.Storage.Utils;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Tokens
 {

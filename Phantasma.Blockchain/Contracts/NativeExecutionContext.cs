@@ -1,8 +1,9 @@
-﻿using Phantasma.Numerics;
-using Phantasma.VM;
-using Phantasma.VM.Contracts;
+﻿using System.Numerics;
 using System;
 using System.Collections.Generic;
+
+using Phantasma.VM;
+using Phantasma.VM.Contracts;
 
 namespace Phantasma.Blockchain.Contracts
 {

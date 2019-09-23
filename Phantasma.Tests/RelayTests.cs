@@ -14,6 +14,7 @@ using Phantasma.Storage;
 using Phantasma.VM.Utils;
 using static Phantasma.Blockchain.Contracts.Native.RelayContract;
 using Phantasma.Blockchain.Contracts;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {
@@ -141,7 +142,7 @@ namespace Phantasma.Tests
 
                 var receiptResult = (ReceiptResult) obj;
                 Assert.IsTrue(receiptResult.nexus == messages[i].nexus);
-                Assert.IsTrue(new BigInteger(receiptResult.index, 10) == messages[i].index);
+                Assert.IsTrue(BigInteger.Parse(receiptResult.index) == messages[i].index);
                 //Assert.IsTrue(receiptResult.receiver == messages[i].receiver);
                 //Assert.IsTrue(receiptResult.script == messages[i].script);
                 //Assert.IsTrue(receiptResult.sender == messages[i].sender);
@@ -209,7 +210,7 @@ namespace Phantasma.Tests
 
                 var receiptResult = (ReceiptResult)obj;
                 Assert.IsTrue(receiptResult.nexus == messages[i].nexus);
-                Assert.IsTrue(new BigInteger(receiptResult.index, 10) == messages[i].index);
+                Assert.IsTrue(BigInteger.Parse(receiptResult.index) == messages[i].index);
                 //Assert.IsTrue(receiptResult.receiver == messages[i].receiver);
                 //Assert.IsTrue(receiptResult.script == messages[i].script);
                 //Assert.IsTrue(receiptResult.sender == messages[i].sender);
@@ -307,7 +308,7 @@ namespace Phantasma.Tests
 
                 var receiptResult = (ReceiptResult)obj;
                 Assert.IsTrue(receiptResult.nexus == messages[i].nexus);
-                Assert.IsTrue(new BigInteger(receiptResult.index, 10) == messages[i].index);
+                Assert.IsTrue(BigInteger.Parse(receiptResult.index) == messages[i].index);
                 //Assert.IsTrue(receiptResult.receiver == messages[i].receiver);
                 //Assert.IsTrue(receiptResult.script == messages[i].script);
                 //Assert.IsTrue(receiptResult.sender == messages[i].sender);
@@ -736,7 +737,7 @@ namespace Phantasma.Tests
 
                 var receiptResult = (ReceiptResult)obj;
                 Assert.IsTrue(receiptResult.nexus == messages[i].nexus);
-                Assert.IsTrue(new BigInteger(receiptResult.index, 10) == messages[i].index);
+                Assert.IsTrue(BigInteger.Parse(receiptResult.index) == messages[i].index);
                 //Assert.IsTrue(receiptResult.receiver == messages[i].receiver);
                 //Assert.IsTrue(receiptResult.script == messages[i].script);
                 //Assert.IsTrue(receiptResult.sender == messages[i].sender);

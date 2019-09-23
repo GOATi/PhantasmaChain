@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using Phantasma.Storage.Utils;
 using Phantasma.Numerics;
+using System.Numerics;
 
 namespace Phantasma.Network.P2P.Messages
 {

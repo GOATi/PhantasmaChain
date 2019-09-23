@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using Phantasma.Core;
 using Phantasma.Core.Types;

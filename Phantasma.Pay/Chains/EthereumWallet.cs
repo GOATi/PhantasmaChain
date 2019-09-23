@@ -6,6 +6,7 @@ using Phantasma.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace Phantasma.Pay.Chains
 {

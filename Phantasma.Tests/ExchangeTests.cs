@@ -12,7 +12,7 @@ using Phantasma.Numerics;
 using Phantasma.Storage;
 using Phantasma.VM.Utils;
 using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderSide;
-using static Phantasma.Numerics.BigInteger;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {
@@ -663,11 +663,11 @@ namespace Phantasma.Tests
                     switch (side)
                     {
                         case Buy:
-                            Assert.IsTrue(Abs(OpenerQuoteTokensDelta) == escrowedUsage - (quoteSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
+                            Assert.IsTrue(BigInteger.Abs(OpenerQuoteTokensDelta) == escrowedUsage - (quoteSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
                             break;
 
                         case Sell:
-                            Assert.IsTrue(Abs(OpenerBaseTokensDelta) == escrowedUsage - (baseSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
+                            Assert.IsTrue(BigInteger.Abs(OpenerBaseTokensDelta) == escrowedUsage - (baseSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
                             break;
                     }
                 }
@@ -881,11 +881,11 @@ namespace Phantasma.Tests
                 switch (side)
                 {
                     case Buy:
-                        Assert.IsTrue(Abs(OpenerQuoteTokensDelta) == escrowedUsage - (quoteSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
+                        Assert.IsTrue(BigInteger.Abs(OpenerQuoteTokensDelta) == escrowedUsage - (quoteSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
                         break;
 
                     case Sell:
-                        Assert.IsTrue(Abs(OpenerBaseTokensDelta) == escrowedUsage - (baseSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
+                        Assert.IsTrue(BigInteger.Abs(OpenerBaseTokensDelta) == escrowedUsage - (baseSymbol == Nexus.FuelTokenSymbol ? txCost : 0));
                         break;
                 }
 

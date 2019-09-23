@@ -2,6 +2,7 @@
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using System;
+using System.Numerics;
 
 namespace Phantasma.Network.P2P
 {

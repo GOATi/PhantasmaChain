@@ -1,6 +1,7 @@
 using Phantasma.Core.Utils;
 using Phantasma.Numerics;
 using System;
+using System.Numerics;
 
 namespace Phantasma.Cryptography
 {
@@ -28,12 +29,12 @@ namespace Phantasma.Cryptography
                 maxBytes[i] = 255;
             }
 
-            var n = BigInteger.FromSignedArray(bytes);
-            var max = BigInteger.FromSignedArray(maxBytes);
+            var n = new BigInteger(bytes);
+            var max = new BigInteger(maxBytes);
 
             var q = n % max;
 
-            bytes = q.ToSignedByteArray();
+            bytes = q.ToByteArray();
 
             // TODO this is a fix for a bug that appears sometimes, it appears that the math before has a mistake somewhere
             var diff = targetLength - bytes.Length;

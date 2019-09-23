@@ -1,6 +1,7 @@
 using Phantasma.Numerics;
 using System;
 using System.IO;
+using System.Numerics;
 using System.Text;
 
 namespace Phantasma.Storage.Utils
@@ -34,7 +35,7 @@ namespace Phantasma.Storage.Utils
 
         public static void WriteBigInteger(this BinaryWriter writer, BigInteger n)
         {
-            var bytes = n.ToSignedByteArray();
+            var bytes = n.ToByteArray();
             writer.Write((byte)bytes.Length);
             writer.Write(bytes);
         }
@@ -83,7 +84,7 @@ namespace Phantasma.Storage.Utils
         {
             var length = reader.ReadByte();
             var bytes = reader.ReadBytes(length);
-            return BigInteger.FromSignedArray(bytes);
+            return new BigInteger(bytes);
         }
 
         public static byte[] ReadByteArray(this BinaryReader reader)

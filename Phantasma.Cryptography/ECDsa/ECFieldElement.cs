@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Numerics;
 using Phantasma.Core;
 using Phantasma.Numerics;
 
@@ -56,35 +57,35 @@ namespace Phantasma.Cryptography.ECC
 
             for (int j = n - 1; j >= s + 1; --j)
             {
-                Ql = (Ql * Qh).Mod(p);
+                Ql = (Ql * Qh) % p;
 
                 if (k.TestBit(j))
                 {
-                    Qh = (Ql * Q).Mod(p);
-                    Uh = (Uh * Vh).Mod(p);
-                    Vl = (Vh * Vl - P * Ql).Mod(p);
-                    Vh = ((Vh * Vh) - (Qh << 1)).Mod(p);
+                    Qh = (Ql * Q) % p;
+                    Uh = (Uh * Vh) % p;
+                    Vl = (Vh * Vl - P * Ql) % p;
+                    Vh = ((Vh * Vh) - (Qh << 1)) % p;
                 }
                 else
                 {
                     Qh = Ql;
-                    Uh = (Uh * Vl - Ql).Mod(p);
-                    Vh = (Vh * Vl - P * Ql).Mod(p);
-                    Vl = ((Vl * Vl) - (Ql << 1)).Mod(p);
+                    Uh = (Uh * Vl - Ql) % p;
+                    Vh = (Vh * Vl - P * Ql) % p;
+                    Vl = ((Vl * Vl) - (Ql << 1)) % p;
                 }
             }
 
-            Ql = (Ql * Qh).Mod(p);
-            Qh = (Ql * Q).Mod(p);
-            Uh = (Uh * Vl - Ql).Mod(p);
-            Vl = (Vh * Vl - P * Ql).Mod(p);
-            Ql = (Ql * Qh).Mod(p);
+            Ql = (Ql * Qh) % p;
+            Qh = (Ql * Q) % p;
+            Uh = (Uh * Vl - Ql) % p;
+            Vl = (Vh * Vl - P * Ql) % p;
+            Ql = (Ql * Qh) % p;
 
             for (int j = 1; j <= s; ++j)
             {
                 Uh = Uh * Vl * p;
-                Vl = ((Vl * Vl) - (Ql << 1)).Mod(p);
-                Ql = (Ql * Ql).Mod(p);
+                Vl = ((Vl * Vl) - (Ql << 1)) % p;
+                Ql = (Ql * Ql) % p;
             }
 
             return new BigInteger[] { Uh, Vl };
@@ -109,7 +110,7 @@ namespace Phantasma.Cryptography.ECC
             BigInteger u = qMinusOne >> 2;
             BigInteger k = (u << 1) + 1;
             BigInteger Q = this.Value;
-            BigInteger fourQ = (Q << 2).Mod(curve.Q);
+            BigInteger fourQ = (Q << 2) % curve.Q;
             BigInteger U, V;
             do
             {
@@ -122,7 +123,7 @@ namespace Phantasma.Cryptography.ECC
                 BigInteger[] result = FastLucasSequence(curve.Q, P, Q, k);
                 U = result[0];
                 V = result[1];
-                if ((V * V).Mod(curve.Q) == fourQ)
+                if (((V * V) % curve.Q) == fourQ)
                 {
                     if (V.TestBit(0))
                     {
@@ -139,12 +140,12 @@ namespace Phantasma.Cryptography.ECC
 
         public ECFieldElement Square()
         {
-            return new ECFieldElement((Value * Value).Mod(curve.Q), curve);
+            return new ECFieldElement(((Value * Value) % curve.Q), curve);
         }
 
         public byte[] ToByteArray()
         {
-            byte[] data = Value.ToSignedByteArray();
+            byte[] data = Value.ToByteArray();
             if (data.Length == 32)
                 return data.Reverse().ToArray();
             if (data.Length > 32)
@@ -154,27 +155,27 @@ namespace Phantasma.Cryptography.ECC
 
         public static ECFieldElement operator -(ECFieldElement x)
         {
-            return new ECFieldElement((-x.Value).Mod(x.curve.Q), x.curve);
+            return new ECFieldElement((-x.Value) % x.curve.Q, x.curve);
         }
 
         public static ECFieldElement operator *(ECFieldElement x, ECFieldElement y)
         {
-            return new ECFieldElement((x.Value * y.Value).Mod(x.curve.Q), x.curve);
+            return new ECFieldElement((x.Value * y.Value) % x.curve.Q, x.curve);
         }
 
         public static ECFieldElement operator /(ECFieldElement x, ECFieldElement y)
         {
-            return new ECFieldElement((x.Value * y.Value.ModInverse(x.curve.Q)).Mod(x.curve.Q), x.curve);
+            return new ECFieldElement((x.Value * y.Value.ModInverse(x.curve.Q)) % x.curve.Q, x.curve);
         }
 
         public static ECFieldElement operator +(ECFieldElement x, ECFieldElement y)
         {
-            return new ECFieldElement((x.Value + y.Value).Mod(x.curve.Q), x.curve);
+            return new ECFieldElement((x.Value + y.Value) % x.curve.Q, x.curve);
         }
 
         public static ECFieldElement operator -(ECFieldElement x, ECFieldElement y)
         {
-            return new ECFieldElement((x.Value - y.Value).Mod(x.curve.Q), x.curve);
+            return new ECFieldElement((x.Value - y.Value) % x.curve.Q, x.curve);
         }
     }
 }

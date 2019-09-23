@@ -13,6 +13,7 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Storage.Context;
+using System.Numerics;
 
 namespace Phantasma.Blockchain
 {

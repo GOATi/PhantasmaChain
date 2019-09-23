@@ -9,6 +9,7 @@ using Phantasma.Core.Types;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Blockchain.Tokens;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts
 {
@@ -392,7 +393,7 @@ namespace Phantasma.Blockchain.Contracts
             Throw.If(!Nexus.TokenExists(symbol), "cannot read price for invalid token");
 
             var bytes = Oracle.Read("price://" + symbol);
-            var value = BigInteger.FromUnsignedArray(bytes, true);
+            var value = new BigInteger(bytes);
             return value;
         }
 
@@ -445,7 +446,7 @@ namespace Phantasma.Blockchain.Contracts
                     bytes[i] ^= time[i % time.Length];
                 }
 
-                seed = BigInteger.FromUnsignedArray(bytes, true);
+                seed = new BigInteger(bytes);
                 randomized = true;
             }
             else

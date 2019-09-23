@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Phantasma.Numerics;
 
 namespace Phantasma.Cryptography.ECC
@@ -26,7 +27,7 @@ namespace Phantasma.Cryptography.ECC
 
         public static int CalculateBitLength(this BigInteger i)
         {
-            byte[] b = i.ToSignedByteArray();
+            byte[] b = i.ToByteArray();
             return (b.Length - 1) * 8 + BitLen(i.Sign> 0 ? b[b.Length - 1] : 255 - b[b.Length - 1]);
         }
     }
@@ -84,7 +85,7 @@ namespace Phantasma.Cryptography.ECC
                         if (encoded.Length != (expectedLength + 1))
                             throw new FormatException("Incorrect length for compressed encoding");
                         int yTilde = encoded[0] & 1;
-                        BigInteger X1 = BigInteger.FromSignedArray(encoded.Skip(1).Reverse().Concat(new byte[1]).ToArray());
+                        BigInteger X1 = new BigInteger(encoded.Skip(1).Reverse().Concat(new byte[1]).ToArray());
                         p = DecompressPoint(yTilde, X1, curve);
                         break;
                     }
@@ -94,8 +95,8 @@ namespace Phantasma.Cryptography.ECC
                     {
                         if (encoded.Length != (2 * expectedLength + 1))
                             throw new FormatException("Incorrect length for uncompressed/hybrid encoding");
-                        BigInteger X1 = BigInteger.FromSignedArray(encoded.Skip(1).Take(expectedLength).Reverse().Concat(new byte[1]).ToArray());
-                        BigInteger Y1 = BigInteger.FromSignedArray(encoded.Skip(1 + expectedLength).Reverse().Concat(new byte[1]).ToArray());
+                        BigInteger X1 = new BigInteger(encoded.Skip(1).Take(expectedLength).Reverse().Concat(new byte[1]).ToArray());
+                        BigInteger Y1 = new BigInteger(encoded.Skip(1 + expectedLength).Reverse().Concat(new byte[1]).ToArray());
                         p = new ECPoint(new ECFieldElement(X1, curve), new ECFieldElement(Y1, curve), curve);
                         break;
                     }
@@ -171,10 +172,10 @@ namespace Phantasma.Cryptography.ECC
             else
             {
                 data = new byte[65];
-                byte[] yBytes = Y.Value.ToSignedByteArray().Reverse().ToArray();
+                byte[] yBytes = Y.Value.ToByteArray().Reverse().ToArray();
                 Buffer.BlockCopy(yBytes, 0, data, 65 - yBytes.Length, yBytes.Length);
             }
-            byte[] xBytes = X.Value.ToSignedByteArray().Reverse().ToArray();
+            byte[] xBytes = X.Value.ToByteArray().Reverse().ToArray();
             Buffer.BlockCopy(xBytes, 0, data, 33 - xBytes.Length, xBytes.Length);
             data[0] = compressed ? Y.Value.IsEven ? (byte)0x02 : (byte)0x03 : (byte)0x04;
             return data;
@@ -405,7 +406,7 @@ namespace Phantasma.Cryptography.ECC
                 throw new ArgumentException();
             if (p.IsInfinity)
                 return p;
-            BigInteger k = BigInteger.FromSignedArray(n.Reverse().Concat(new byte[1]).ToArray());
+            BigInteger k = new BigInteger(n.Reverse().Concat(new byte[1]).ToArray());
             if (k.Sign== 0)
                 return p.Curve.Infinity;
             return Multiply(p, k);

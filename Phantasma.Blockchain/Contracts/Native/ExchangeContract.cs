@@ -8,6 +8,7 @@ using Phantasma.Storage.Context;
 using System;
 using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderSide;
 using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderType;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts.Native
 {
@@ -114,7 +115,7 @@ namespace Phantasma.Blockchain.Contracts.Native
 
         private string BuildOrderKey(ExchangeOrderSide side, string baseSymbol, string quoteSymbol) => $"{side}_{baseSymbol}_{quoteSymbol}";
 
-        public BigInteger GetMinimumQuantity(BigInteger tokenDecimals) => BigInteger.Pow(10, tokenDecimals / 2);
+        public BigInteger GetMinimumQuantity(BigInteger tokenDecimals) => BigInteger.Pow(10, (int)(tokenDecimals / 2));
         public BigInteger GetMinimumTokenQuantity(TokenInfo token) => GetMinimumQuantity(token.Decimals);
 
         public BigInteger GetMinimumSymbolQuantity(string symbol)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 using Microsoft.VisualBasic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -49,7 +50,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             simulator.GenerateTransfer(owner, buyer.Address, nexus.RootChain, FuelTokenSymbol, 100000000);
             simulator.MintTokens(owner, owner.Address, FiatTokenSymbol,
-                new BigInteger("1000000000000000000000000000000000000000000000000", 10) * GetUnitValue(FiatTokenDecimals));
+                BigInteger.Parse("1000000000000000000000000000000000000000000000000") * GetUnitValue(FiatTokenDecimals));
             //simulator.GenerateTransfer(owner, buyer.Address, nexus.RootChain, Nexus.FiatTokenSymbol, 1000000 * UnitConversion.GetUnitValue(Nexus.FiatTokenDecimals));
             simulator.EndBlock();
 
@@ -120,7 +121,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             simulator.GenerateTransfer(owner, buyer.Address, nexus.RootChain, FuelTokenSymbol, 100000000);
             simulator.MintTokens(owner, owner.Address, FiatTokenSymbol,
-                new BigInteger("1000000000000000000000000000000000000000000000000", 10) * GetUnitValue(FiatTokenDecimals));
+                BigInteger.Parse("1000000000000000000000000000000000000000000000000") * GetUnitValue(FiatTokenDecimals));
             //simulator.GenerateTransfer(owner, buyer.Address, nexus.RootChain, Nexus.FiatTokenSymbol, 1000000 * UnitConversion.GetUnitValue(Nexus.FiatTokenDecimals));
             simulator.EndBlock();
 

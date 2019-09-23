@@ -11,6 +11,7 @@ using System;
 using System.Linq;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Core.Types;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {

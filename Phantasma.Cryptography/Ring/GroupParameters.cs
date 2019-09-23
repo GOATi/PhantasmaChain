@@ -1,5 +1,6 @@
 ﻿using Phantasma.Numerics;
 using Phantasma.Core;
+using System.Numerics;
 
 namespace Phantasma.Cryptography.Ring
 {

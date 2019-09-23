@@ -9,6 +9,7 @@ using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Core.Types;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts.Native
 {
@@ -855,7 +856,7 @@ namespace Phantasma.Blockchain.Contracts.Native
                 return 0;
             }
 
-            var bytes = CryptoExtensions.Sha256(itemID.ToSignedByteArray());
+            var bytes = CryptoExtensions.Sha256(itemID.ToByteArray());
             var num = 1 + bytes[2];
             return num;
         }

@@ -9,6 +9,7 @@ using Phantasma.Storage;
 using Phantasma.Core;
 using Phantasma.Storage.Utils;
 using System;
+using System.Numerics;
 
 namespace Phantasma.Blockchain
 {

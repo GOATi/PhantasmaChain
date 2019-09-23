@@ -13,6 +13,7 @@ using Phantasma.Storage;
 using Phantasma.Blockchain;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.CodeGen.Assembler;
+using System.Numerics;
 
 namespace Phantasma.Simulator
 {

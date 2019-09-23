@@ -8,6 +8,7 @@ using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using Phantasma.Cryptography.Ring;
 using Phantasma.Cryptography.ECC;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {
@@ -32,13 +33,13 @@ namespace Phantasma.Tests
             do
             {
                 rnd.NextBytes(bytes);
-                number = BigInteger.FromUnsignedArray(bytes, isPositive: true);
+                number = new BigInteger(bytes);
             } while (number <= 0);
 
-            hash = number;
+            hash = new Hash(number.ToByteArray());
             Assert.IsTrue(hash.ToByteArray().Length == 32);
 
-            BigInteger other = hash;
+            BigInteger other = new BigInteger(hash.ToByteArray());
             Assert.IsTrue(number == other);
 
             Assert.IsTrue(Hash.TryParse("FFFFAAAAFFFFBBBBFFFFAAAAFFFFBBBBFFFFAAAAFFFFBBBBFFFFAAAAFFFFBBBB", out hash));

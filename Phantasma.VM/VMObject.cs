@@ -8,6 +8,7 @@ using Phantasma.Core;
 using Phantasma.Core.Types;
 using Phantasma.Storage.Utils;
 using Phantasma.Storage;
+using System.Numerics;
 
 namespace Phantasma.VM
 {
@@ -31,34 +32,9 @@ namespace Phantasma.VM
        
         public object Data { get; private set; }
 
-        private int _localSize = 0;
-
         private static readonly string TimeFormat = "MM/dd/yyyy HH:mm:ss";
 
         internal Dictionary<VMObject, VMObject> GetChildren() => this.Type == VMType.Struct? (Dictionary<VMObject, VMObject>)Data: null;
-
-        public int Size
-        {
-            get
-            {
-                var total = 0;
-
-                if (Type == VMType.Object)
-                {
-                    var children = this.GetChildren();
-                    foreach (var entry in children.Values)
-                    {
-                        total += entry.Size;
-                    }
-                }
-                else
-                {
-                    total = _localSize;
-                }
-
-                return total;
-            }
-        }
 
         public VMObject()
         {
@@ -221,7 +197,6 @@ namespace Phantasma.VM
         public VMObject SetValue(byte[] val, VMType type)
         {
             this.Type = type;
-            this._localSize = val.Length;
 
             switch (type)
             {
@@ -233,7 +208,7 @@ namespace Phantasma.VM
 
                 case VMType.Number:
                     {
-                        this.Data = BigInteger.FromSignedArray(val);
+                        this.Data = new BigInteger(val);
                         break;
                     }
 
@@ -275,7 +250,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.Number;
             this.Data = val;
-            this._localSize = val.ToSignedByteArray().Length;
             return this;
         }
 
@@ -283,7 +257,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.Struct;
             this.Data = children;
-            this._localSize = 4; // TODO not valid
             return this;
         }
 
@@ -293,7 +266,6 @@ namespace Phantasma.VM
             Throw.If(!type.IsStructOrClass(), "invalid cast");
             this.Type = VMType.Object;
             this.Data = val;
-            this._localSize = 4;
             return this;
         }
 
@@ -306,7 +278,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.Timestamp;
             this.Data = val;
-            this._localSize = 4;
             return this;
         }
 
@@ -314,7 +285,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.String;
             this.Data = val;
-            this._localSize = val.Length;
             return this;
         }
 
@@ -322,7 +292,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.Bool;
             this.Data = val;
-            this._localSize = 1;
             return this;
         }
 
@@ -330,7 +299,6 @@ namespace Phantasma.VM
         {
             this.Type = VMType.Enum;
             this.Data = val;
-            this._localSize = 4;
             return this;
         }
 
@@ -354,7 +322,6 @@ namespace Phantasma.VM
                 this.Type = VMType.Struct;
                 children = new Dictionary<VMObject, VMObject>();
                 this.Data = children;
-                this._localSize = 0;
             }
             else
             {
@@ -581,7 +548,7 @@ namespace Phantasma.VM
                         case VMType.Number:
                             {
                                 var result = new VMObject();
-                                result.SetValue(((BigInteger)srcObj.Data).ToSignedByteArray());
+                                result.SetValue(((BigInteger)srcObj.Data).ToByteArray());
                                 return result;
                             }
 
@@ -608,7 +575,7 @@ namespace Phantasma.VM
                         case VMType.Bytes:
                             {
                                 var result = new VMObject();
-                                result.SetValue(BigInteger.FromSignedArray((byte[])srcObj.Data));
+                                result.SetValue(new BigInteger((byte[])srcObj.Data));
                                 return result;
                             }
 

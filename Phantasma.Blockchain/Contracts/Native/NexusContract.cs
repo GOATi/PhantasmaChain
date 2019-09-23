@@ -1,8 +1,8 @@
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
-using Phantasma.Numerics;
 using System;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts.Native
 {

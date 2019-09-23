@@ -9,6 +9,7 @@ using Phantasma.VM.Utils;
 using static Phantasma.Blockchain.Contracts.Native.StakeContract;
 using static Phantasma.Blockchain.Contracts.Native.StorageContract;
 using Phantasma.Blockchain.Contracts;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {

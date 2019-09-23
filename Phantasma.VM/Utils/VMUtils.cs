@@ -1,4 +1,5 @@
 ﻿using Phantasma.Numerics;
+using System.Numerics;
 
 namespace Phantasma.VM.Utils
 {

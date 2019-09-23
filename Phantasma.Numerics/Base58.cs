@@ -1,5 +1,6 @@
 using Phantasma.Core;
 using System;
+using System.Numerics;
 using System.Text;
 
 namespace Phantasma.Numerics
@@ -21,7 +22,7 @@ namespace Phantasma.Numerics
                 bi += index * BigInteger.Pow(58, input.Length - 1 - i);
             }
 
-            byte[] bytes = bi.ToUnsignedByteArray();
+            byte[] bytes = bi.ToByteArray();
             Array.Reverse(bytes);
 
             int leadingZeros = 0;
@@ -44,7 +45,7 @@ namespace Phantasma.Numerics
             }
             temp[input.Length] = 0;
 
-            var value = BigInteger.FromSignedArray(temp);
+            var value = new BigInteger(temp);
             var sb = new StringBuilder();
             while (value >= 58)
             {

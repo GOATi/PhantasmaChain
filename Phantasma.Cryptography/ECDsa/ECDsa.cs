@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Phantasma.Numerics;
 
 namespace Phantasma.Cryptography.ECC
@@ -26,7 +27,7 @@ namespace Phantasma.Cryptography.ECC
         private static BigInteger CalculateE(BigInteger n, byte[] message)
         {
             int messageBitLength = message.Length * 8;
-            BigInteger trunc = BigInteger.FromSignedArray(message.Reverse().Concat(new byte[1]).ToArray());
+            BigInteger trunc = new BigInteger(message.Reverse().Concat(new byte[1]).ToArray());
             if (n.GetBitLength() < messageBitLength)
             {
                 trunc >>= messageBitLength - n.GetBitLength();
@@ -38,7 +39,7 @@ namespace Phantasma.Cryptography.ECC
         {
             if (privateKey == null) throw new InvalidOperationException();
             BigInteger e = CalculateE(curve.N, message);
-            BigInteger d = BigInteger.FromSignedArray(privateKey.Reverse().Concat(new byte[1]).ToArray());
+            BigInteger d = new BigInteger(privateKey.Reverse().Concat(new byte[1]).ToArray());
             BigInteger r, s;
 
             do
@@ -53,10 +54,10 @@ namespace Phantasma.Cryptography.ECC
                     while (k.Sign== 0 || k.CompareTo(curve.N) >= 0);
                     ECPoint p = ECPoint.Multiply(curve.G, k);
                     BigInteger x = p.X.Value;
-                    r = x.Mod(curve.N);
+                    r = x % curve.N;
                 }
                 while (r.Sign== 0);
-                s = (k.ModInverse(curve.N) * (e + d * r)).Mod(curve.N);
+                s = (k.ModInverse(curve.N) * (e + d * r)) % curve.N;
                 if (s > curve.N / 2)
                 {
                     s = curve.N - s;
@@ -73,8 +74,8 @@ namespace Phantasma.Cryptography.ECC
                 return null;
             }
 
-            var rBytes = r.ToSignedByteArray().Reverse().ToArray();
-            var sBytes = s.ToSignedByteArray().Reverse().ToArray();
+            var rBytes = r.ToByteArray().Reverse().ToArray();
+            var sBytes = s.ToByteArray().Reverse().ToArray();
 
             using (var stream = new MemoryStream()) {
                 using (var writer = new BinaryWriter(stream))
@@ -146,8 +147,8 @@ namespace Phantasma.Cryptography.ECC
                     var lenS = reader.ReadByte();
                     var bytesS = reader.ReadBytes(lenS).Reverse().ToArray();
 
-                    var R = BigInteger.FromSignedArray(bytesR);
-                    var S = BigInteger.FromSignedArray(bytesS);
+                    var R = new BigInteger(bytesR);
+                    var S = new BigInteger(bytesS);
                     return VerifySignature(message, R, S, curve, publicKey);
                 }
             }
@@ -159,10 +160,10 @@ namespace Phantasma.Cryptography.ECC
                 return false;
             BigInteger e = CalculateE(curve.N, message);
             BigInteger c = s.ModInverse(curve.N);
-            BigInteger u1 = (e * c).Mod(curve.N);
-            BigInteger u2 = (r * c).Mod(curve.N);
+            BigInteger u1 = (e * c) % curve.N;
+            BigInteger u2 = (r * c) % curve.N;
             ECPoint point = SumOfTwoMultiplies(curve.G, u1, publicKey, u2);
-            BigInteger v = point.X.Value.Mod(curve.N);
+            BigInteger v = point.X.Value % curve.N;
             return v.Equals(r);
         }
     }

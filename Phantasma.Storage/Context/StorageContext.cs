@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Text;
 using Phantasma.Numerics;
 using Phantasma.Storage.Utils;
@@ -54,7 +55,7 @@ namespace Phantasma.Storage.Context
             return Serialization.Unserialize(bytes, type);
         }
 
-        public void Put(byte[] key, BigInteger value) { Put(key, value.ToSignedByteArray()); }
+        public void Put(byte[] key, BigInteger value) { Put(key, value.ToByteArray()); }
 
         public void Put<T>(byte[] key, T obj) where T : struct
         {
@@ -66,7 +67,7 @@ namespace Phantasma.Storage.Context
 
         public void Put(string key, byte[] value) { Put(Encoding.UTF8.GetBytes(key), value); }
 
-        public void Put(string key, BigInteger value) { Put(Encoding.UTF8.GetBytes(key), value.ToSignedByteArray()); }
+        public void Put(string key, BigInteger value) { Put(Encoding.UTF8.GetBytes(key), value.ToByteArray()); }
 
         public void Put(string key, string value) { Put(Encoding.UTF8.GetBytes(key), Encoding.UTF8.GetBytes(value)); }
 

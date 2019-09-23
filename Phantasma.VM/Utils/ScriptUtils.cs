@@ -4,6 +4,7 @@ using Phantasma.Cryptography;
 using Phantasma.Core.Types;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
+using System.Numerics;
 
 namespace Phantasma.VM.Utils
 {

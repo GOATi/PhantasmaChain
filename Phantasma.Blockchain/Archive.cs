@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Phantasma.Numerics;
+using System.Numerics;
 
 namespace Phantasma.Blockchain
 {

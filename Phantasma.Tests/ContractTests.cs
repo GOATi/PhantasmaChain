@@ -21,6 +21,7 @@ using Phantasma.Core.Utils;
 using static Phantasma.Blockchain.Contracts.Native.StorageContract;
 using static Phantasma.Blockchain.Nexus;
 using static Phantasma.Numerics.UnitConversion;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {

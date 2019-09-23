@@ -3,6 +3,7 @@ using Phantasma.Numerics;
 using Phantasma.Core.Utils;
 using Phantasma.Core;
 using Phantasma.Storage.Utils;
+using System.Numerics;
 
 namespace Phantasma.Storage.Context
 {
@@ -41,7 +42,7 @@ namespace Phantasma.Storage.Context
 
         public static BigInteger Count(this StorageSet set)
         {
-            return set.Context.Get(CountKey(set.BaseKey)).AsBigInteger();
+            return new BigInteger(set.Context.Get(CountKey(set.BaseKey)));
         }
 
         public static bool Contains<K>(this StorageSet set, K key)

@@ -2,6 +2,7 @@ using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
 using System;
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace Phantasma.Blockchain.Contracts.Native

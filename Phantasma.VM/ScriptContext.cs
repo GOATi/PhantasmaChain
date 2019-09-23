@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using Phantasma.Core;
-using Phantasma.Numerics;
+using System.Numerics;
 
 namespace Phantasma.VM
 {

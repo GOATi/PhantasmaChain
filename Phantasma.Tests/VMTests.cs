@@ -160,7 +160,7 @@ namespace Phantasma.Tests
                 var n = obj.AsNumber();
                 DebugEnum enm;
 
-                switch (n.ToDecimal())
+                switch (n.ToString())
                 {
                     case "1":
                         enm = DebugEnum.enum1;

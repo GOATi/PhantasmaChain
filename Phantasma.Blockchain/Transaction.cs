@@ -13,6 +13,7 @@ using Phantasma.Storage.Utils;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Cryptography.ECC;
+using System.Numerics;
 
 namespace Phantasma.Blockchain
 {

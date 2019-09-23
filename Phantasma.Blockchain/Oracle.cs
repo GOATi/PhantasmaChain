@@ -177,7 +177,7 @@ namespace Phantasma.Blockchain
 
                 var price = PullPrice(baseSymbol, quoteSymbol);
                 var val = UnitConversion.ToBigInteger(price, tokenInfo.Decimals);
-                return val.ToUnsignedByteArray();
+                return val.ToByteArray();
             }
             else
             {

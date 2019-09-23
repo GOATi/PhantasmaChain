@@ -16,6 +16,7 @@ using Phantasma.Blockchain.Tokens;
 using Phantasma.Simulator;
 using Phantasma.Storage.Context;
 using Phantasma.VM.Utils;
+using System.Numerics;
 
 namespace Phantasma.Tests
 {
@@ -2619,10 +2620,10 @@ namespace Phantasma.Tests
 
             var script = AssemblerUtils.BuildScript(scriptString);
 
-            var calls = DisasmUtils.ExtractMethodCalls(script);
+            var calls = DisasmUtils.ExtractMethodCalls(script).ToArray();
 
-            Assert.IsTrue(calls.Count() == 1);
-            Assert.IsTrue(calls.First().MethodName == methodName);
+            Assert.IsTrue(calls.Length == 1);
+            Assert.IsTrue(calls[0].MethodName == methodName);
         }
         #endregion
 

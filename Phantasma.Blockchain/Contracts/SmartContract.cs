@@ -15,6 +15,7 @@ using System.IO;
 using Phantasma.Core.Types;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
+using System.Numerics;
 
 namespace Phantasma.Blockchain.Contracts
 {
@@ -295,7 +296,7 @@ namespace Phantasma.Blockchain.Contracts
 
                     if (receivedType == typeof(BigInteger))
                     {
-                        return ((BigInteger)arg).ToSignedByteArray();
+                        return ((BigInteger)arg).ToByteArray();
                     }
 
                     if (receivedType == typeof(Hash))

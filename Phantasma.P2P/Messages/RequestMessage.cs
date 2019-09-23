@@ -5,6 +5,7 @@ using Phantasma.Core;
 using Phantasma.Cryptography;
 using Phantasma.Storage.Utils;
 using Phantasma.Numerics;
+using System.Numerics;
 
 namespace Phantasma.Network.P2P.Messages
 {
