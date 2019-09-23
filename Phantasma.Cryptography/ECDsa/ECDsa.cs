@@ -51,19 +51,19 @@ namespace Phantasma.Cryptography.ECC
                     {
                         k = CryptoExtensions.NextBigInteger(curve.N.GetBitLength());
                     }
-                    while (k.Sign== 0 || k.CompareTo(curve.N) >= 0);
+                    while (k.Sign <= 0 || k.CompareTo(curve.N) >= 0);
                     ECPoint p = ECPoint.Multiply(curve.G, k);
                     BigInteger x = p.X.Value;
                     r = x % curve.N;
                 }
-                while (r.Sign== 0);
+                while (r.Sign <= 0);
                 s = (k.ModInverse(curve.N) * (e + d * r)) % curve.N;
                 if (s > curve.N / 2)
                 {
                     s = curve.N - s;
                 }
             }
-            while (s.Sign== 0);
+            while (s.Sign<= 0);
             return EncodeSignatureDER(r, s);
         }
 

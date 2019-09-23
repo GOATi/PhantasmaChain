@@ -63,14 +63,7 @@ namespace Phantasma.Numerics
         public static int GetBitLength(this BigInteger n)
          {
             var data = n.ToByteArray();
-            if ((data.Length == 1 && data[0] == 0) || data.Length == 0)
-                return 0;
-
-            var result = (data.Length - 1) * 32;
-
-            result += (int)Math.Log(data[data.Length - 1], 2) + 1;
-
-            return result;
+            return data.Length << 3;
         }
     }
 }
