@@ -4,22 +4,8 @@ using Phantasma.Domain;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
-    public enum ValidatorType
-    {
-        Invalid,
-        Primary,
-        Secondary, // aka StandBy
-    }
-
-    public struct ValidatorEntry
-    {
-        public Address address;
-        public Timestamp election;
-        public ValidatorType type;
-    }
-
     public sealed class ValidatorContract : SmartContract
     {
         public const string ValidatorCountTag = "validator.count";

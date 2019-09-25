@@ -1,6 +1,6 @@
-﻿namespace Phantasma.Blockchain.Contracts.Native
+﻿namespace Phantasma.Contracts
 {
-    public sealed class BombContract : SmartContract
+    public sealed class BombContract : IContract
     {
         public override string Name => Nexus.BombContractName;
 

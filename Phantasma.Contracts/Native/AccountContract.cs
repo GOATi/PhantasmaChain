@@ -3,7 +3,7 @@ using Phantasma.Domain;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public enum AccountTrigger
     {
@@ -14,27 +14,23 @@ namespace Phantasma.Blockchain.Contracts.Native
         OnWitness, // address
     }
 
-    public sealed class AccountContract : SmartContract
+    public sealed class AccountContract : NativeContract
     {
-        public override string Name => Nexus.AccountContractName;
+        public override NativeContractKind Kind => NativeContractKind.Account;
 
         internal StorageMap _addressMap; //<Address, string> 
         internal StorageMap _nameMap; //<string, Address> 
         internal StorageMap _scriptMap; //<Address, byte[]> 
         internal StorageMap _metadata;
 
-        public static readonly BigInteger RegistrationCost = UnitConversion.ToBigInteger(0.1m, Nexus.FuelTokenDecimals);
-
-        public AccountContract() : base()
-        {
-        }
+        public static readonly BigInteger RegistrationCost = UnitConversion.ToBigInteger(0.1m, DomainSettings.FuelTokenDecimals);
 
         public void RegisterName(Address target, string name)
         {
             Runtime.Expect(target.IsUser, "must be user address");
             Runtime.Expect(target != Runtime.Nexus.GenesisAddress, "address must not be genesis");
-            Runtime.Expect(IsWitness(target), "invalid witness");
-            Runtime.Expect(ValidationUtils.ValidateName(name), "invalid name");
+            Runtime.Expect(Runtime.IsWitness(target), "invalid witness");
+            Runtime.Expect(Validation.IsValidIdentifier(name), "invalid name");
 
             Runtime.Expect(!_addressMap.ContainsKey(target), "address already has a name");
             Runtime.Expect(!_nameMap.ContainsKey(name), "name already used");
@@ -49,13 +45,13 @@ namespace Phantasma.Blockchain.Contracts.Native
         {
             Runtime.Expect(target.IsUser, "must be user address");
             Runtime.Expect(target != Runtime.Nexus.GenesisAddress, "address must not be genesis");
-            Runtime.Expect(IsWitness(target), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(target), "invalid witness");
 
             Runtime.Expect(script.Length < 1024, "invalid script length");
 
             Runtime.Expect(!_scriptMap.ContainsKey(target), "address already has a script");
 
-            var witnessCheck = InvokeTrigger(Runtime, script, AccountTrigger.OnWitness.ToString(), Address.Null);
+            var witnessCheck = Runtime.InvokeTrigger(script, AccountTrigger.OnWitness.ToString(), Address.Null);
             Runtime.Expect(!witnessCheck, "script does not handle OnWitness correctly");
 
             _scriptMap.Set(target, script);
@@ -76,7 +72,7 @@ namespace Phantasma.Blockchain.Contracts.Native
         public void SetMetadata(Address target, string key, string value)
         {
             Runtime.Expect(target.IsUser, "must be user address");
-            Runtime.Expect(IsWitness(target), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(target), "invalid witness");
 
             var metadataEntries = _metadata.Get<Address, StorageList>(target);
 
@@ -133,7 +129,7 @@ namespace Phantasma.Blockchain.Contracts.Native
         {
             if (target == Runtime.Nexus.GenesisAddress)
             {
-                return ValidationUtils.GENESIS;
+                return Validation.GENESIS;
             }
 
             if (_addressMap.ContainsKey(target))
@@ -141,7 +137,7 @@ namespace Phantasma.Blockchain.Contracts.Native
                 return _addressMap.Get<Address, string>(target);
             }
 
-            return ValidationUtils.ANONYMOUS;
+            return Validation.ANONYMOUS;
         }
 
         public byte[] LookUpScript(Address target)
@@ -156,12 +152,12 @@ namespace Phantasma.Blockchain.Contracts.Native
 
         public Address LookUpName(string name)
         {
-            if (name == ValidationUtils.ANONYMOUS)
+            if (name == Validation.ANONYMOUS)
             {
                 return Address.Null;
             }
 
-            if (name == ValidationUtils.GENESIS)
+            if (name == Validation.GENESIS)
             {
                 return Runtime.Nexus.GenesisAddress;
             }

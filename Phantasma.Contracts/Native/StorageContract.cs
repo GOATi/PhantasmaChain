@@ -5,7 +5,7 @@ using Phantasma.Storage.Context;
 using System;
 using System.Runtime.InteropServices;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public struct StorageEntry
     {

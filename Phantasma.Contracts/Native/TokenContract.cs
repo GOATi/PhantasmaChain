@@ -6,7 +6,7 @@ using System.Linq;
 using Phantasma.Storage.Context;
 using Phantasma.Domain;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public enum TokenTrigger
     {

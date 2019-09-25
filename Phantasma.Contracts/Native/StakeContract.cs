@@ -7,7 +7,7 @@ using Phantasma.Blockchain.Tokens;
 using System.Linq;
 using Phantasma.Domain;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public struct EnergyAction
     {

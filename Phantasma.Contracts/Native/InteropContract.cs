@@ -8,7 +8,7 @@ using Phantasma.Storage.Context;
 using System;
 using System.Linq;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public enum InteropTransferStatus
     {

@@ -5,33 +5,8 @@ using Phantasma.Domain;
 using Phantasma.Numerics;
 using System;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
-    public struct Metadata
-    {
-        public string key;
-        public string value;
-    }
-
-    public struct TokenEventData
-    {
-        public string symbol;
-        public BigInteger value;
-        public Address chainAddress;
-    }
-
-    public struct RoleEventData
-    {
-        public string role;
-        public Timestamp date;
-    }
-
-    public struct MetadataEventData
-    {
-        public string type;
-        public Metadata metadata;
-    }
-
     public sealed class NexusContract : SmartContract
     {
         public override string Name => Nexus.NexusContractName;
@@ -179,7 +154,7 @@ namespace Phantasma.Blockchain.Contracts.Native
             byte[] data;
             target.DecodeInterop(out platformName, out data, 0);
 
-            Runtime.Expect(ValidationUtils.ValidateName(platformName), "invalid platform name");
+            Runtime.Expect(Validation.IsValidIdentifier(platformName), "invalid platform name");
 
             Runtime.Expect(Runtime.Nexus.CreatePlatform(target, platformName, fuelSymbol), "creation of platform failed");
 

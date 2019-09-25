@@ -2,17 +2,13 @@
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
-    public sealed class BlockContract: SmartContract
+    public sealed class BlockContract: NativeContract
     {
-        public override string Name => Nexus.BlockContractName;
+        public override NativeContractKind Kind => NativeContractKind.Block;
 
         private Address previousValidator;
-
-        public BlockContract() : base()
-        {
-        }
 
         public Address GetCurrentValidator()
         {
@@ -25,12 +21,12 @@ namespace Phantasma.Blockchain.Contracts.Native
             if (Runtime.Chain.BlockHeight > 0)
             {
                 var lastBlock = Runtime.Chain.LastBlock;
-                lastValidator = Runtime.Chain.GetValidatorForBlock(lastBlock);
+                lastValidator = Runtime.GetValidatorForBlock(Runtime.Chain, lastBlock.Hash);
                 validationSlotTime = lastBlock.Timestamp;
             }
             else
             {
-                lastValidator = Runtime.Nexus.GetValidatorByIndex(0).address;
+                lastValidator = Runtime.GetValidatorByIndex(0).address;
                 validationSlotTime = chainCreationTime;
             }
 
@@ -45,8 +41,8 @@ namespace Phantasma.Blockchain.Contracts.Native
             }
 
             int validatorIndex = (int)(diff / slotDuration);
-            var validatorCount = Runtime.Nexus.GetPrimaryValidatorCount();
-            var chainIndex = Runtime.Nexus.GetIndexOfChain(Runtime.Chain.Name);
+            var validatorCount = Runtime.GetPrimaryValidatorCount();
+            var chainIndex = Runtime.GetIndexOfChain(Runtime.Chain.Name);
             Runtime.Expect(chainIndex >= 0, "invalid chain index");
 
             validatorIndex += chainIndex;
@@ -56,7 +52,7 @@ namespace Phantasma.Blockchain.Contracts.Native
 
             do
             {
-                var validator = Runtime.Nexus.GetValidatorByIndex(validatorIndex);
+                var validator = Runtime.GetValidatorByIndex(validatorIndex);
                 if (validator.type == ValidatorType.Primary && !validator.address.IsNull)
                 {
                     return validator.address;
@@ -75,12 +71,12 @@ namespace Phantasma.Blockchain.Contracts.Native
 
         public void OpenBlock(Address from)
         {
-            Runtime.Expect(IsWitness(from), "witness failed");
+            Runtime.Expect(Runtime.IsWitness(from), "witness failed");
 
-            var count = Runtime.Nexus.HasGenesis ? Runtime.Nexus.GetPrimaryValidatorCount() : 0;
+            var count = Runtime.Nexus.HasGenesis ? Runtime.GetPrimaryValidatorCount() : 0;
             if (count > 0)
             {
-                Runtime.Expect(Runtime.Nexus.IsKnownValidator(from), "validator failed");
+                Runtime.Expect(Runtime.IsKnownValidator(from), "validator failed");
                 var expectedValidator = GetCurrentValidator();
                 Runtime.Expect(from == expectedValidator, "current validator mismatch");
             }

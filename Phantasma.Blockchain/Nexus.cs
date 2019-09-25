@@ -25,40 +25,7 @@ namespace Phantasma.Blockchain
         private static readonly string ChainParentNameKey = "chain.parent.";
         private static readonly string ChainChildrenBlockKey = "chain.children.";
 
-        public const string GasContractName = "gas";
-        public const string TokenContractName = "token";
-        public const string BlockContractName = "block";
-        public const string NexusContractName = "nexus";
-        public const string StakeContractName = "stake";
-        public const string SwapContractName = "swap";
-        public const string AccountContractName = "account";
-        public const string ConsensusContractName = "consensus";
-        public const string GovernanceContractName = "governance";
-        public const string StorageContractName = "storage";
-        public const string ValidatorContractName = "validator";
-        public const string InteropContractName = "interop";
-        public const string ExchangeContractName = "exchange";
-
-        public const string PrivacyContractName = "privacy";
-        public const string RelayContractName = "relay";
-        public const string BombContractName = "bomb";
-
         public const string NexusProtocolVersionTag = "nexus.protocol.version";
-
-        public const string FuelTokenSymbol = "KCAL";
-        public const string FuelTokenName = "Phantasma Energy";
-        public const int FuelTokenDecimals = 10;
-
-        public const string StakingTokenSymbol = "SOUL";
-        public const string StakingTokenName = "Phantasma Stake";
-        public const int StakingTokenDecimals = 8;
-
-        public const string FiatTokenSymbol = "USD";
-        public const string FiatTokenName = "Dollars";
-        public const int FiatTokenDecimals = 8;
-
-        public static readonly BigInteger PlatformSupply = UnitConversion.ToBigInteger(100000000, FuelTokenDecimals);
-        public static readonly string PlatformName = "phantasma";
 
         public Chain RootChain => FindChainByName(RootChainName);
 
@@ -385,7 +352,7 @@ namespace Phantasma.Blockchain
         #region NAME SERVICE
         public Address LookUpName(string name)
         { 
-            if (!ValidationUtils.ValidateName(name))
+            if (!Validation.IsValidIdentifier(name))
             {
                 return Address.Null;
             }
@@ -1386,7 +1353,7 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
-            if (!ValidationUtils.ValidateName(name))
+            if (!Validation.IsValidIdentifier(name))
             {
                 throw new ChainException("invalid nexus name");
             }

@@ -6,7 +6,7 @@ using Phantasma.Numerics;
 using Phantasma.Storage.Context;
 using System;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public struct MarketEventData
     {

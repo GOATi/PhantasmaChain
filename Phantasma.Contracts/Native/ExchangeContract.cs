@@ -10,7 +10,7 @@ using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderSide;
 using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderType;
 using Phantasma.Domain;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public enum ExchangeOrderSide
     {
@@ -143,7 +143,7 @@ namespace Phantasma.Blockchain.Contracts.Native
         {
             Runtime.Expect(IsWitness(from), "invalid witness");
 
-            Runtime.Expect(ValidationUtils.ValidateName(id), "invalid id");
+            Runtime.Expect(Validation.IsValidIdentifier(id), "invalid id");
 
             var exchange = new ExchangeProvider()
             {

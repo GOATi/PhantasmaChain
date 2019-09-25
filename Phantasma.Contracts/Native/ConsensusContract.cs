@@ -6,7 +6,7 @@ using Phantasma.Numerics;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public enum ConsensusKind
     {

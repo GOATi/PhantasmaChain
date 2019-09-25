@@ -6,7 +6,7 @@ using Phantasma.Storage.Context;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Contracts
 {
     public struct SwapPair
     {
