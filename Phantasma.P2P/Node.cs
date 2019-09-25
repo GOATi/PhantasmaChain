@@ -449,7 +449,7 @@ namespace Phantasma.Network.P2P
 
                         if (request.Kind.HasFlag(RequestKind.Chains))
                         {
-                            var chains = Nexus.Chains.Select(x => Nexus.FindChainByName(x)).Select(x => new ChainInfo(x.Name, Nexus.GetParentChainByName(x.Name), x.LastBlock != null ? x.LastBlock.Height : 0));
+                            var chains = Nexus.Chains.Select(x => Nexus.GetChainByName(x)).Select(x => new ChainInfo(x.Name, Nexus.GetParentChainByName(x.Name), x.Height));
                             answer.SetChains(chains);
                         }
 
@@ -463,21 +463,21 @@ namespace Phantasma.Network.P2P
                         {
                             foreach (var entry in request.Blocks)
                             {
-                                var chain = this.Nexus.FindChainByName(entry.Key);
+                                var chain = this.Nexus.GetChainByName(entry.Key);
                                 if (chain == null)
                                 {
                                     continue;
                                 }
 
                                 var startBlock = entry.Value;
-                                if (startBlock > chain.BlockHeight)
+                                if (startBlock > chain.Height)
                                 {
                                     continue;
                                 }
 
                                 var blockList = new List<string>();
                                 var currentBlock = startBlock;
-                                while (blockList.Count < 50 && currentBlock <= chain.BlockHeight)
+                                while (blockList.Count < 50 && currentBlock <= chain.Height)
                                 {
                                     var block = chain.FindBlockByHeight(currentBlock);
                                     var bytes = block.ToByteArray();
@@ -521,11 +521,11 @@ namespace Phantasma.Network.P2P
                         {
                             foreach (var entry in listMsg.Chains)
                             {
-                                var chain = Nexus.FindChainByName(entry.name);
+                                var chain = Nexus.GetChainByName(entry.name);
                                 // NOTE if we dont find this chain then it is too soon for ask for blocks from that chain
-                                if (chain != null && chain.BlockHeight < entry.height)
+                                if (chain != null && chain.Height < entry.height)
                                 {
-                                    blockFetches[entry.name] = chain.BlockHeight + 1;
+                                    blockFetches[entry.name] = chain.Height + 1;
                                 }
                             }
                         }
@@ -556,7 +556,7 @@ namespace Phantasma.Network.P2P
 
                             foreach (var entry in listMsg.Blocks)
                             {
-                                var chain = Nexus.FindChainByName(entry.Key);
+                                var chain = Nexus.GetChainByName(entry.Key);
                                 if (chain == null)
                                 {
                                     continue;

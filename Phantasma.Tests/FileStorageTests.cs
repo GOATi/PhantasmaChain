@@ -46,11 +46,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -121,11 +121,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -180,7 +180,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakedAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakedAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
@@ -211,17 +211,17 @@ namespace Phantasma.Tests
 
             //-----------
             //Try partial unstake: should succeed
-            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             var stakeReduction = stakedAmount / 5;
 
             simulator.BeginBlock();
             simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Unstake", testUser.Address, stakeReduction).
+                    .CallContract(NativeContractKind.Stake, "Unstake", testUser.Address, stakeReduction).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
 
             Assert.IsTrue(finalStakedAmount == initialStakedAmount - stakeReduction);
         }
@@ -254,7 +254,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakedAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakedAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
@@ -302,11 +302,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Unstake", testUser.Address, stakedAmount).
+                    .CallContract(NativeContractKind.Stake, "Unstake", testUser.Address, stakedAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(finalStakedAmount == 0);
 
         }
@@ -339,11 +339,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -442,11 +442,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -533,11 +533,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUserA, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUserA.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUserA.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUserA.Address, stakeAmount).
                     SpendGas(testUserA.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUserA.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUserA.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUserA.Address);
@@ -550,11 +550,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUserB, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUserB.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUserB.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUserB.Address, stakeAmount).
                     SpendGas(testUserB.Address).EndScript());
             simulator.EndBlock();
 
-            stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUserB.Address).AsNumber();
+            stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUserB.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUserB.Address);
@@ -627,7 +627,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakedAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakedAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
@@ -660,7 +660,7 @@ namespace Phantasma.Tests
 
             //-----------
             //Try to unstake everything: should fail due to files still existing for this user
-            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             var stakeReduction = initialStakedAmount - MinimumValidStake;
             startingSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
 
@@ -669,12 +669,12 @@ namespace Phantasma.Tests
                 simulator.BeginBlock();
                 simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                     ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                        .CallContract(NativeContractKind.Stake.GetName(), "Unstake", testUser.Address, stakeReduction).
+                        .CallContract(NativeContractKind.Stake, "Unstake", testUser.Address, stakeReduction).
                         SpendGas(testUser.Address).EndScript());
                 simulator.EndBlock();
             });
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(initialStakedAmount == finalStakedAmount);
 
             usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
@@ -710,11 +710,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -772,11 +772,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -854,11 +854,11 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             tx = simulator.GenerateCustomTransaction(testUser, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().AllowGas(testUser.Address, Address.Null, 1, 9999)
-                    .CallContract(NativeContractKind.Stake.GetName(), "Stake", testUser.Address, stakeAmount).
+                    .CallContract(NativeContractKind.Stake, "Stake", testUser.Address, stakeAmount).
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake.GetName(), "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);

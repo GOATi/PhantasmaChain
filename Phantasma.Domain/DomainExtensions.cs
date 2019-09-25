@@ -62,6 +62,16 @@ namespace Phantasma.Domain
             return temp;
         }
 
+        public static IBlock GetLastBlock(this IRuntime runtime)
+        {
+            if (runtime.Chain.Height < 1)
+            {
+                return null;
+            }
+
+            return runtime.GetBlockByHeight(runtime.Chain.Height);
+        }
+
         public static VMObject CallContext(this IRuntime runtime, NativeContractKind nativeContract, string methodName, params object[] args)
         {
             return runtime.CallContext(nativeContract.GetName(), methodName, args);

@@ -368,7 +368,7 @@ namespace Phantasma.API
         private TransactionResult FillTransaction(Transaction tx)
         {
             var block = Nexus.FindBlockByTransaction(tx);
-            var chain = block!=null? Nexus.FindChainByAddress(block.ChainAddress) : null;
+            var chain = block!=null? Nexus.GetChainByAddress(block.ChainAddress) : null;
 
             var result = new TransactionResult
             {
@@ -451,13 +451,13 @@ namespace Phantasma.API
             Throw.IfNull(chain, nameof(chain));
 
             var parentName = Nexus.GetParentChainByName(chain.Name);
-            var parentChain = Nexus.FindChainByName(parentName);
+            var parentChain = Nexus.GetChainByName(parentName);
 
             var result = new ChainResult
             {
                 name = chain.Name,
                 address = chain.Address.Text,
-                height = (uint)chain.BlockHeight,
+                height = (uint)chain.Height,
                 parentAddress = parentChain != null ? parentChain.Address.ToString() : "",
                 contracts = chain.GetContracts()
             };
@@ -467,7 +467,7 @@ namespace Phantasma.API
 
         private Chain FindChainByInput(string chainInput)
         {
-            var chain = Nexus.FindChainByName(chainInput);
+            var chain = Nexus.GetChainByName(chainInput);
 
             if (chain != null)
             {
@@ -476,7 +476,7 @@ namespace Phantasma.API
 
             if (Address.IsValidAddress(chainInput))
             {
-                return Nexus.FindChainByAddress(Address.FromText(chainInput));
+                return Nexus.GetChainByAddress(Address.FromText(chainInput));
             }
 
             return null;
@@ -536,7 +536,7 @@ namespace Phantasma.API
             {
                 foreach (var chainName in Nexus.Chains)
                 {
-                    var chain = Nexus.FindChainByName(chainName);
+                    var chain = Nexus.GetChainByName(chainName);
                     var balance = chain.GetTokenBalance(symbol, address);
                     if (balance > 0)
                     {
@@ -637,7 +637,7 @@ namespace Phantasma.API
                 return new ErrorResult { error = "invalid chain" };
             }
 
-            return new SingleResult { value = chain.BlockHeight };
+            return new SingleResult { value = chain.Height };
         }
 
         [APIInfo(typeof(int), "Returns the number of transactions of given block hash or error if given hash is invalid or is not found.", false, 30)]
@@ -667,7 +667,7 @@ namespace Phantasma.API
             {
                 foreach (var chainName in Nexus.Chains)
                 {
-                    var chain = Nexus.FindChainByName(chainName);
+                    var chain = Nexus.GetChainByName(chainName);
                     var block = chain.FindBlockByHash(hash);
                     if (block != null)
                     {
@@ -687,7 +687,7 @@ namespace Phantasma.API
             {
                 foreach (var chainName in Nexus.Chains)
                 {
-                    var chain = Nexus.FindChainByName(chainName);
+                    var chain = Nexus.GetChainByName(chainName);
                     var block = chain.FindBlockByHash(hash);
                     if (block != null)
                     {
@@ -726,7 +726,7 @@ namespace Phantasma.API
         [APIFailCase("chain is invalid", "453dsa")]
         public IAPIResult GetRawBlockByHeight([APIParameter("Address or name of chain", "PDHcAHq1fZXuwDrtJGDhjemFnj2ZaFc7iu3qD4XjZG9eV")] string chainInput, [APIParameter("Height of block", "1")] uint height)
         {
-            var chain = Nexus.FindChainByName(chainInput);
+            var chain = Nexus.GetChainByName(chainInput);
 
             if (chain == null)
             {
@@ -734,7 +734,7 @@ namespace Phantasma.API
                 {
                     return new ErrorResult { error = "chain not found" };
                 }
-                chain = Nexus.FindChainByAddress(Address.FromText(chainInput));
+                chain = Nexus.GetChainByAddress(Address.FromText(chainInput));
             }
 
             if (chain == null)
@@ -871,7 +871,7 @@ namespace Phantasma.API
             {
                 foreach (var chainName in Nexus.Chains)
                 {
-                    var chain = Nexus.FindChainByName(chainName);
+                    var chain = Nexus.GetChainByName(chainName);
                     count += plugin.GetAddressTransactions(address).Count(tx => Nexus.FindBlockByHash(tx).ChainAddress.Equals(chain.Address));
                 }
             }
@@ -1068,7 +1068,7 @@ namespace Phantasma.API
 
             foreach (var chainName in Nexus.Chains)
             {
-                var chain = Nexus.FindChainByName(chainName);
+                var chain = Nexus.GetChainByName(chainName);
                 var single = FillChain(chain);
                 objs.Add(single);
             }
@@ -1121,7 +1121,7 @@ namespace Phantasma.API
 
             var info = Nexus.GetNFT(symbol, ID);
 
-            var chain = Nexus.FindChainByName(info.CurrentChain);
+            var chain = Nexus.GetChainByName(info.CurrentChain);
             bool forSale;
 
             if (chain != null && chain.HasContract("market"))

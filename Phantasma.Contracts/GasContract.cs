@@ -77,7 +77,7 @@ namespace Phantasma.Contracts
             var pow = Runtime.Transaction.Hash.GetDifficulty();
             Runtime.Expect(pow >= (int)ProofOfWork.Moderate, "expected proof of work");
 
-            Runtime.Expect(Runtime.Chain.IsRoot, "must be a root chain");
+            Runtime.Expect(Runtime.IsRootChain(), "must be a root chain");
 
             Runtime.Expect(from.IsUser, "must be a user address");
             Runtime.Expect(Runtime.IsWitness(from), "invalid witness");

@@ -130,7 +130,7 @@ namespace Phantasma.Contracts
 
         public Timestamp GetMasterClaimDateFromReference(BigInteger claimDistance, Timestamp referenceTime)
         {
-            Runtime.Expect(Runtime.Chain.IsRoot, "must be root chain");
+            Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
 
             DateTime referenceDate;
             if (referenceTime.Value != 0)
@@ -742,7 +742,7 @@ namespace Phantasma.Contracts
 
         private BigInteger CalculateRewardsWithHalving(BigInteger totalStake, BigInteger unclaimedPartials, Timestamp startTime, Timestamp endTime)
         {
-            Runtime.Expect(Runtime.Chain.IsRoot, "must be root chain");
+            Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
 
             if (genesisTimestamp == 0)
             {

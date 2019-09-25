@@ -198,7 +198,7 @@ namespace Phantasma.Contracts
                 Runtime.Expect(mode == ConsensusMode.Majority, "must use majority mode for system governance");
             }
 
-            Runtime.Expect(Runtime.Chain.IsRoot, "not root chain");
+            Runtime.Expect(Runtime.IsRootChain(), "not root chain");
 
             Runtime.Expect(kind == ConsensusKind.Validators, "community polls not yet");
 

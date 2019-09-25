@@ -343,52 +343,5 @@ namespace Phantasma.Contracts
         }
 
         #endregion
-
-        #region SIDE CHAINS
-        public bool IsChain(Address address)
-        {
-            return Runtime.GetChainByAddress(address) != null;
-        }
-
-        public bool IsRootChain(Address address)
-        {
-            var chain = Runtime.GetChainByAddress(address);
-            if (chain == null)
-            {
-                return false;
-            }
-
-            return chain.IsRoot;
-        }
-
-        public bool IsSideChain(Address address)
-        {
-            var chain = Runtime.GetChainByAddress(address);
-            if (chain == null)
-            {
-                return false;
-            }
-
-            return !chain.IsRoot;
-        }
-
-        public bool IsAddressOfParentChain(Address address)
-        {
-            if (Runtime.Chain.IsRoot)
-            {
-                return false;
-            }
-
-            var parentChain = this.Runtime.GetChainParent(this.Runtime.Chain.Name);
-            return address == parentChain.Address;
-        }
-
-        public bool IsAddressOfChildChain(Address address)
-        {
-            var targetChain = Runtime.GetChainByAddress(address);
-            var parentChain = Runtime.GetChainParent(targetChain.Name);
-            return parentChain.Name == this.Runtime.Chain.Name;
-        }
-        #endregion
     }
 }

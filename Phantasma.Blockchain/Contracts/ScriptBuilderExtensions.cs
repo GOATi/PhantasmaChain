@@ -66,5 +66,12 @@ namespace Phantasma.Blockchain.Contracts
         {
             return sb.CallInterop("Runtime.SendToken", destinationChain, from, to, tokenSymbol, tokenId);
         }
+
+        public static ScriptBuilder CallContract(this ScriptBuilder sb, NativeContractKind nativeContract, string method, params object[] args)
+        {
+            return sb.CallContract(nativeContract.GetName(), method, args);
+        }
+
+
     }
 }

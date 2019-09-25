@@ -49,7 +49,7 @@ namespace Phantasma.Tests
             simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(owner.Address, Address.Null, 1, 9999).
-                    CallContract(NativeContractKind.Governance.GetName(), nameof(GovernanceContract.SetValue), ValidatorCountTag, new BigInteger(5)).
+                    CallContract(NativeContractKind.Governance, nameof(GovernanceContract.SetValue), ValidatorCountTag, new BigInteger(5)).
                     SpendGas(owner.Address).
                     EndScript());
             simulator.EndBlock();
@@ -63,7 +63,7 @@ namespace Phantasma.Tests
                 simulator.GenerateCustomTransaction(validator, ProofOfWork.None, () =>
                     ScriptUtils.BeginScript().
                         AllowGas(validator.Address, Address.Null, 1, 9999).
-                        CallContract(NativeContractKind.Stake.GetName(), nameof(StakeContract.Stake), validator.Address, stakeAmount).
+                        CallContract(NativeContractKind.Stake, nameof(StakeContract.Stake), validator.Address, stakeAmount).
                         SpendGas(validator.Address).
                         EndScript());
                 simulator.EndBlock();
@@ -76,7 +76,7 @@ namespace Phantasma.Tests
             var tx = simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(owner.Address, Address.Null, 1, 9999).
-                    CallContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.SetValidator), secondValidator.Address, 1, Primary).
+                    CallContract(NativeContractKind.Validator, nameof(ValidatorContract.SetValidator), secondValidator.Address, 1, Primary).
                     SpendGas(owner.Address).
                     EndScript());
             simulator.EndBlock().First();
@@ -87,7 +87,7 @@ namespace Phantasma.Tests
                 AddNewValidator(newValidator);
 
                 var validatorType = simulator.Nexus.RootChain
-                    .InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorType),
+                    .InvokeContract(NativeContractKind.Validator, nameof(ValidatorContract.GetValidatorType),
                         newValidator.Address).AsEnum<ValidatorType>();
 
                 Assert.IsTrue(validatorType != Invalid);
@@ -102,7 +102,7 @@ namespace Phantasma.Tests
             Timestamp endTime = simulator.CurrentTime.AddDays(1);
             var pollName = SystemPoll + ValidatorPollTag;
 
-            var validators = (ValidatorEntry[]) simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Validator.GetName(),
+            var validators = (ValidatorEntry[]) simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Validator,
                 nameof(ValidatorContract.GetValidators)).ToObject(typeof(ValidatorEntry[]));
 
             var activeValidators = validators.Where(x => x.address != Address.Null);
@@ -124,7 +124,7 @@ namespace Phantasma.Tests
             simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(owner.Address, Address.Null, 1, 9999).
-                    CallContract(NativeContractKind.Consensus.GetName(), nameof(ConsensusContract.InitPoll),
+                    CallContract(NativeContractKind.Consensus, nameof(ConsensusContract.InitPoll),
                         owner.Address, pollName, ConsensusKind.Validators, ConsensusMode.Majority, startTime, endTime, serializedChoices, 1).
                     SpendGas(owner.Address).
                     EndScript());
@@ -139,7 +139,7 @@ namespace Phantasma.Tests
                 simulator.GenerateCustomTransaction(validator, ProofOfWork.None, () =>
                     ScriptUtils.BeginScript().
                         AllowGas(validator.Address, Address.Null, 1, 9999).
-                        CallContract(NativeContractKind.Consensus.GetName(), nameof(ConsensusContract.SingleVote),
+                        CallContract(NativeContractKind.Consensus, nameof(ConsensusContract.SingleVote),
                             validator.Address, pollName, i).
                         SpendGas(validator.Address).
                         EndScript());
@@ -149,7 +149,7 @@ namespace Phantasma.Tests
             //skip until the voting is over
             simulator.TimeSkipDays(1.5);
 
-            var votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus.GetName(), nameof(ConsensusContract.GetRank), pollName,
+            var votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName,
                 choices[activeValidatorCount].Serialize()).AsNumber();
 
             //call SetValidator for each set validator address
@@ -159,13 +159,13 @@ namespace Phantasma.Tests
 
                 ValidatorType validatorType = i < 2 ? Primary : Secondary;
 
-                votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus.GetName(), nameof(ConsensusContract.GetRank), pollName, validatorChoice).AsNumber();
+                votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName, validatorChoice).AsNumber();
 
                 simulator.BeginBlock();
                 var tx = simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                     ScriptUtils.BeginScript().
                         AllowGas(owner.Address, Address.Null, 1, 9999).
-                        CallContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.SetValidator), validatorChoice, votingRank, validatorType).
+                        CallContract(NativeContractKind.Validator, nameof(ValidatorContract.SetValidator), validatorChoice, votingRank, validatorType).
                         SpendGas(owner.Address).
                         EndScript());
                 simulator.EndBlock().First();

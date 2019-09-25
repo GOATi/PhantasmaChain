@@ -9,6 +9,7 @@ using Phantasma.Storage;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
 using Phantasma.Contracts;
+using System.Linq;
 
 namespace Phantasma.Blockchain.Contracts
 {
@@ -43,16 +44,15 @@ namespace Phantasma.Blockchain.Contracts
 
         public BigInteger MinimumFee;
 
-
         public bool IsTrigger => DelayPayment;
 
-        INexus IRuntime.Nexus => throw new NotImplementedException();
+        INexus IRuntime.Nexus => this.Nexus;
 
-        IChain IRuntime.Chain => throw new NotImplementedException();
+        IChain IRuntime.Chain => this.Chain;
 
-        ITransaction IRuntime.Transaction => throw new NotImplementedException();
+        ITransaction IRuntime.Transaction => this.Transaction;
 
-        public StorageContext Storage => throw new NotImplementedException();
+        public StorageContext Storage => this.ChangeSet;
 
         public RuntimeVM(byte[] script, Chain chain, Timestamp time, Transaction transaction, StorageChangeSetContext changeSet, OracleReader oracle, bool readOnlyMode, bool delayPayment = false) : base(script)
         {
@@ -86,7 +86,7 @@ namespace Phantasma.Blockchain.Contracts
             if (this.Chain != null && !Chain.IsRoot)
             {
                 var parentName = chain.Nexus.GetParentChainByName(chain.Name);
-                this.ParentChain = chain.Nexus.FindChainByName(parentName);
+                this.ParentChain = chain.Nexus.GetChainByName(parentName);
             }
             else
             {
@@ -507,46 +507,6 @@ namespace Phantasma.Blockchain.Contracts
             }
         }
 
-        public IBlock GetBlockByHash(IChain chain, Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IBlock GetBlockByHeight(IChain chain, BigInteger height)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ITransaction GetTransaction(IChain chain, Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IToken GetToken(string symbol)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IFeed GetFeed(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IPlatform GetPlatform(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IChain GetChainByAddress(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IChain GetChainByName(string name)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Log(string description)
         {
             throw new NotImplementedException();
@@ -554,142 +514,7 @@ namespace Phantasma.Blockchain.Contracts
 
         public void Throw(string description)
         {
-            throw new NotImplementedException();
-        }
-
-        public void Notify(EventKind kind, Address address, VMObject content)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IEvent GetTransactionEvents(ITransaction transaction)
-        {
-            throw new NotImplementedException();
-        }
-
-        public BigInteger GetBalance(IChain chain, IToken token, Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IBlock GetBlockByHash(Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IBlock GetBlockByHeight(BigInteger height)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IContract GetContract(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TokenExists(string symbol)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool FeedExists(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool PlatformExists(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ContractExists(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ContractDeployed(IChain chain, string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ArchiveExists(Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IArchive GetArchive(Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool DeleteArchive(Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int GetIndexOfChain(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool HasAddressScript(Address from)
-        {
-            throw new NotImplementedException();
-        }
-
-        IEvent[] IRuntime.GetTransactionEvents(ITransaction transaction)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Address GetValidatorForBlock(IChain chain, Hash hash)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ValidatorEntry GetValidatorByIndex(int index)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool IsPrimaryValidator(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool IsSecondaryValidator(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int GetPrimaryValidatorCount()
-        {
-            throw new NotImplementedException();
-        }
-
-        public int GetSecondaryValidatorCount()
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool IsKnownValidator(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool IsStakeMaster(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public BigInteger GetStake(Address address)
-        {
-            throw new NotImplementedException();
-        }
-
-        public BigInteger GenerateUID()
-        {
-            throw new NotImplementedException();
+            throw new ChainException(description);
         }
 
         public bool InvokeTrigger(byte[] script, string triggerName, params object[] args)
@@ -759,114 +584,278 @@ namespace Phantasma.Blockchain.Contracts
             return Transaction.IsSignedBy(address);
         }
 
-        public BigInteger[] GetOwnerships(string symbol, Address address)
+        public IBlock GetBlockByHash(Hash hash)
+        {
+            return this.Chain.FindBlockByHash(hash);
+        }
+
+        public IBlock GetBlockByHeight(BigInteger height)
+        {
+            return this.Chain.FindBlockByHeight(height);
+        }
+
+        public ITransaction GetTransaction(Hash hash)
+        {
+            return this.Chain.FindTransactionByHash(hash);
+        }
+
+        public IToken GetToken(string symbol)
+        {
+            return this.Nexus.GetTokenInfo(symbol);
+        }
+
+        public IFeed GetFeed(string name)
+        {
+            return this.Nexus.GetFeedInfo(name);
+        }
+
+        public IPlatform GetPlatform(string name)
+        {
+            return this.Nexus.GetPlatformInfo(name);
+        }
+
+        public IContract GetContract(string name)
         {
             throw new NotImplementedException();
         }
 
-        public BigInteger GetTokenSupply(string symbol)
+        public bool TokenExists(string symbol)
+        {
+            return this.Nexus.TokenExists(symbol);
+        }
+
+        public bool FeedExists(string name)
+        {
+            return this.Nexus.FeedExists(name);
+        }
+
+        public bool PlatformExists(string name)
+        {
+            return this.Nexus.PlatformExists(name);
+        }
+
+        public bool ContractExists(string name)
         {
             throw new NotImplementedException();
         }
 
-        public bool CreateToken(string symbol, string name, string platform, Hash hash, BigInteger maxSupply, int decimals, TokenFlags flags, byte[] script)
+        public bool ContractDeployed(string name)
         {
             throw new NotImplementedException();
         }
 
-        public bool CreateChain(Address owner, string name, string parentChain, string[] contractNames)
+        public bool ArchiveExists(Hash hash)
         {
-            throw new NotImplementedException();
+            return this.Nexus.ArchiveExists(hash);
         }
 
-        public bool CreateFeed(Address owner, string name, FeedMode mode)
+        public IArchive GetArchive(Hash hash)
         {
-            throw new NotImplementedException();
+            return this.Nexus.FindArchive(hash);
         }
 
-        public bool CreatePlatform(Address address, string name, string fuelSymbol)
+        public bool DeleteArchive(Hash hash)
         {
-            throw new NotImplementedException();
+            var archive = Nexus.FindArchive(hash);
+            if (archive == null)
+            {
+                return false;
+            }
+            return this.Nexus.DeleteArchive(archive);
         }
 
-        public bool CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
+        public bool ChainExists(string name)
         {
-            throw new NotImplementedException();
+            return Nexus.ChainExists(name);
         }
 
-        public bool MintTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        public IChain GetChainByAddress(Address address)
         {
-            throw new NotImplementedException();
+            return Nexus.GetChainByAddress(address);
         }
 
-        public bool MintToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        public IChain GetChainByName(string name)
         {
-            throw new NotImplementedException();
+            return Nexus.GetChainByName(name);
         }
 
-        public bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        public int GetIndexOfChain(string name)
         {
-            throw new NotImplementedException();
-        }
-
-        public bool BurnToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TransferToken(string symbol, Address source, Address destination, BigInteger tokenID)
-        {
-            throw new NotImplementedException();
-        }
-
-        public BigInteger CreateNFT(string tokenSymbol, Address chainAddress, byte[] rom, byte[] ram)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool DestroyNFT(string tokenSymbol, BigInteger tokenID)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool EditNFTContent(string tokenSymbol, BigInteger tokenID, byte[] ram)
-        {
-            throw new NotImplementedException();
-        }
-
-        public TokenContent GetNFT(string tokenSymbol, BigInteger tokenID)
-        {
-            throw new NotImplementedException();
-        }
-
-        public byte[] ReadOracle(string URL)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Address LookUpName(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public byte[] GetAddressScript(Address from)
-        {
-            throw new NotImplementedException();
+            return Nexus.GetIndexOfChain(name);
         }
 
         public IChain GetChainParent(string name)
         {
-            throw new NotImplementedException();
+            var parentName = Nexus.GetParentChainByName(name);
+            return GetChainByName(parentName);
+        }
+
+        public Address LookUpName(string name)
+        {
+            return Nexus.LookUpName(name);
+        }
+
+        public bool HasAddressScript(Address from)
+        {
+            return Nexus.HasAddressScript(from);
+        }
+
+        public byte[] GetAddressScript(Address from)
+        {
+            return Nexus.LookUpAddressScript(from);
+        }
+
+        // TODO optimize this
+        public IEvent[] GetTransactionEvents(ITransaction transaction)
+        {
+            var block = Chain.FindTransactionBlock(transaction.Hash);
+            return block.GetEventsForTransaction(transaction.Hash).Cast<IEvent>().ToArray(); 
+        }
+
+        public Address GetValidatorForBlock(Hash hash)
+        {
+            return Chain.GetValidatorForBlock(hash);
+        }
+
+        public ValidatorEntry GetValidatorByIndex(int index)
+        {
+            return Nexus.GetValidatorByIndex(index);
         }
 
         public ValidatorEntry[] GetValidators()
         {
+            return Nexus.GetValidators();
+        }
+
+        public bool IsPrimaryValidator(Address address)
+        {
+            return Nexus.IsPrimaryValidator(address);
+        }
+
+        public bool IsSecondaryValidator(Address address)
+        {
+            return Nexus.IsSecondaryValidator(address);
+        }
+
+        public bool IsKnownValidator(Address address)
+        {
+            return Nexus.IsKnownValidator(address);
+        }
+
+        public int GetPrimaryValidatorCount()
+        {
+            return Nexus.GetPrimaryValidatorCount();
+        }
+
+        public int GetSecondaryValidatorCount()
+        {
+            return Nexus.GetSecondaryValidatorCount();
+        }
+
+        public bool IsStakeMaster(Address address)
+        {
+            return Nexus.IsStakeMaster(address);
+        }
+
+        public BigInteger GetStake(Address address)
+        {
+            return Nexus.GetStakeFromAddress(address);
+        }
+
+        public BigInteger GenerateUID()
+        {
             throw new NotImplementedException();
+        }
+
+        public BigInteger[] GetOwnerships(string symbol, Address address)
+        {
+            var ownerships = new OwnershipSheet(symbol);
+            return ownerships.Get(this.Storage, address);
+        }
+
+        public BigInteger GetTokenSupply(string symbol)
+        {
+            return Nexus.GetTokenSupply(this.Storage, symbol);
+        }
+
+        public bool CreateToken(string symbol, string name, string platform, Hash hash, BigInteger maxSupply, int decimals, TokenFlags flags, byte[] script)
+        {
+            return Nexus.CreateToken(symbol, name, platform, hash, maxSupply, decimals, flags, script);
+        }
+
+        public bool CreateChain(Address owner, string name, string parentChain, string[] contractNames)
+        {
+            return Nexus.CreateChain(this.Storage, owner, name, parentChain, contractNames);
+        }
+
+        public bool CreateFeed(Address owner, string name, FeedMode mode)
+        {
+            return Nexus.CreateFeed(owner, name, mode);
+        }
+
+        public bool CreatePlatform(Address address, string name, string fuelSymbol)
+        {
+            return Nexus.CreatePlatform(address, name, fuelSymbol);
+        }
+
+        public bool CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
+        {
+            return Nexus.CreateArchive(merkleTree, size, flags, key);
+        }
+
+        public bool MintTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        {
+            return Nexus.MintTokens(this, symbol, target, amount, isSettlement);
+        }
+
+        public bool MintToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        {
+            return Nexus.MintToken(this, symbol, target, tokenID, isSettlement);
+        }
+
+        public bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        {
+            return Nexus.BurnTokens(this, symbol, target, amount, isSettlement);
+        }
+
+        public bool BurnToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        {
+            return Nexus.BurnToken(this, symbol, target, tokenID, isSettlement);
+        }
+
+        public bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount)
+        {
+            return Nexus.TransferTokens(this, symbol, source, destination, amount);
+        }
+
+        public bool TransferToken(string symbol, Address source, Address destination, BigInteger tokenID)
+        {
+            return Nexus.TransferTokens(this, symbol, source, destination, tokenID);
+        }
+
+        public BigInteger CreateNFT(string tokenSymbol, Address address, byte[] rom, byte[] ram)
+        {
+            return Nexus.CreateNFT(tokenSymbol, this.Chain.Name, address, rom, ram);
+        }
+
+        public bool DestroyNFT(string tokenSymbol, BigInteger tokenID)
+        {
+            return Nexus.DestroyNFT(tokenSymbol, tokenID);
+        }
+
+        public bool EditNFTContent(string tokenSymbol, BigInteger tokenID, byte[] ram)
+        {
+            return Nexus.EditNFTContent(tokenSymbol, tokenID, ram);
+        }
+
+        public TokenContent GetNFT(string tokenSymbol, BigInteger tokenID)
+        {
+            return Nexus.GetNFT(tokenSymbol, tokenID);
+        }
+
+        public byte[] ReadOracle(string URL)
+        {
+            return this.Oracle.Read(URL);
         }
     }
 }

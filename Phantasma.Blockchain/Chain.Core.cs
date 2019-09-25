@@ -18,7 +18,7 @@ using Phantasma.Contracts;
 
 namespace Phantasma.Blockchain
 {
-    public partial class Chain 
+    public partial class Chain : IChain
     {
         #region PRIVATE
         private KeyValueStore<Hash, Transaction> _transactions;
@@ -39,9 +39,7 @@ namespace Phantasma.Blockchain
         public string Name { get; private set; }
         public Address Address { get; private set; }
 
-        public BigInteger BlockHeight => _blocks.Count;
-
-        public Block LastBlock => FindBlockByHeight(BlockHeight);
+        public BigInteger Height => _blocks.Count;
 
         public readonly Logger Log;
 
@@ -161,16 +159,18 @@ namespace Phantasma.Blockchain
                 return false;
             }*/
 
-            if (LastBlock != null)
+            var lastBlock = this.FindBlockByHeight(Height);
+
+            if (lastBlock != null)
             {
-                if (LastBlock.Height != block.Height - 1)
+                if (lastBlock.Height != block.Height - 1)
                 {
-                    throw new BlockGenerationException($"height of block should be {LastBlock.Height + 1}");
+                    throw new BlockGenerationException($"height of block should be {lastBlock.Height + 1}");
                 }
 
-                if (block.PreviousHash != LastBlock.Hash)
+                if (block.PreviousHash != lastBlock.Hash)
                 {
-                    throw new BlockGenerationException($"previous hash should be {LastBlock.PreviousHash}");
+                    throw new BlockGenerationException($"previous hash should be {lastBlock.PreviousHash}");
                 }
             }
 
@@ -349,7 +349,7 @@ namespace Phantasma.Blockchain
                 }
 
                 var parentName = Nexus.GetParentChainByName(this.Name);
-                var parentChain = Nexus.FindChainByName(parentName);
+                var parentChain = Nexus.GetChainByName(parentName);
                 if (parentChain != null)
                 {
                     var parentSupplies = new SupplySheet(symbol, parentChain, Nexus);
@@ -359,7 +359,7 @@ namespace Phantasma.Blockchain
                 var childrenNames = this.Nexus.GetChildChainsByName(this.Name);
                 foreach (var childName in childrenNames)
                 {
-                    var childChain = Nexus.FindChainByName(childName);
+                    var childChain = Nexus.GetChainByName(childName);
                     var childSupplies = new SupplySheet(symbol, childChain, Nexus);
                     childSupplies.Synch(childChain.Storage, this.Name, balance);
                 }
@@ -479,10 +479,12 @@ namespace Phantasma.Blockchain
             var targetBlock = FindBlockByHash(targetHash);
             Throw.IfNull(targetBlock, nameof(targetBlock));
 
-            var currentBlock = this.LastBlock;
+            var currentBlock = this.FindBlockByHeight(Height);
             while (true)
             {
                 Throw.IfNull(currentBlock, nameof(currentBlock));
+
+                Throw.If(!_blockChangeSets.ContainsKey(currentBlock.Hash), "not enought data for deleting this block");
 
                 var changeSet = _blockChangeSets[currentBlock.Hash];
                 changeSet.Undo();
@@ -512,6 +514,21 @@ namespace Phantasma.Blockchain
             return null;
         }
 
+        public VMObject InvokeContract(NativeContractKind nativeContract, string methodName, Timestamp time, params object[] args)
+        {
+            return InvokeContract(nativeContract.GetName(), methodName, time, args);
+        }
+
+        public VMObject InvokeContract(NativeContractKind nativeContract, string methodName, params object[] args)
+        {
+            return InvokeContract(nativeContract.GetName(), methodName, Timestamp.Now, args);
+        }
+
+        public VMObject InvokeContract(string contractName, string methodName, params object[] args)
+        {
+            return InvokeContract(contractName, methodName, Timestamp.Now, args);
+        }
+
         public VMObject InvokeContract(string contractName, string methodName, Timestamp time, params object[] args)
         {
             var contract = Nexus.AllocContract(contractName);
@@ -527,11 +544,6 @@ namespace Phantasma.Blockchain
             }
 
             return result;
-        }
-
-        public VMObject InvokeContract(string contractName, string methodName, params object[] args)
-        {
-            return InvokeContract(contractName, methodName, Timestamp.Now, args);
         }
 
         public VMObject InvokeScript(byte[] script)

@@ -22,7 +22,7 @@ namespace Phantasma.Domain
         IBlock GetBlockByHash(Hash hash);
         IBlock GetBlockByHeight(BigInteger height);
 
-        ITransaction GetTransaction(IChain chain, Hash hash);
+        ITransaction GetTransaction(Hash hash);
 
         IToken GetToken(string symbol);
         IFeed GetFeed(string name);
@@ -34,12 +34,13 @@ namespace Phantasma.Domain
         bool PlatformExists(string name);
 
         bool ContractExists(string name);
-        bool ContractDeployed(IChain chain, string name);
+        bool ContractDeployed(string name);
 
         bool ArchiveExists(Hash hash);
         IArchive GetArchive(Hash hash);
         bool DeleteArchive(Hash hash);
 
+        bool ChainExists(string name);
         IChain GetChainByAddress(Address address);
         IChain GetChainByName(string name);
         int GetIndexOfChain(string name);
@@ -58,7 +59,7 @@ namespace Phantasma.Domain
 
         IEvent[] GetTransactionEvents(ITransaction transaction);
 
-        Address GetValidatorForBlock(IChain chain, Hash hash);
+        Address GetValidatorForBlock(Hash hash);
         ValidatorEntry GetValidatorByIndex(int index);
         ValidatorEntry[] GetValidators();
         bool IsPrimaryValidator(Address address);

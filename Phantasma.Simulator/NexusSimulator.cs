@@ -94,7 +94,7 @@ namespace Phantasma.Simulator
                 }
             }
 
-            this.bankChain = Nexus.FindChainByName("bank");
+            this.bankChain = Nexus.GetChainByName("bank");
 
             _rnd = new Random(seed);
             _keys.Add(_owner);
@@ -291,8 +291,9 @@ namespace Phantasma.Simulator
                             txs.Add(txHashMap[hash]);
                         }
 
-                        BigInteger nextHeight = chain.LastBlock != null ? chain.LastBlock.Height + 1 : Chain.InitialHeight;
-                        var prevHash = chain.LastBlock != null ? chain.LastBlock.Hash : Hash.Null;
+                        var lastBlock = chain.FindBlockByHeight(chain.Height);
+                        BigInteger nextHeight = chain.Height + 1;
+                        var prevHash = lastBlock != null ? lastBlock.Hash : Hash.Null;
 
                         var block = new Block(nextHeight, chain.Address, CurrentTime, hashes, prevHash);
 
@@ -754,9 +755,9 @@ namespace Phantasma.Simulator
                     case 1:
                         {
                             var sourceChainList = Nexus.Chains.ToArray();
-                            sourceChain = Nexus.FindChainByName( sourceChainList[_rnd.Next() % sourceChainList.Length]);
+                            sourceChain = Nexus.GetChainByName( sourceChainList[_rnd.Next() % sourceChainList.Length]);
 
-                            var targetChainList = Nexus.Chains.Select(x => Nexus.FindChainByName(x)).Where(x => Nexus.GetParentChainByName(x.Name) == sourceChain.Name || Nexus.GetParentChainByName(sourceChain.Name) == x.Name).ToArray();
+                            var targetChainList = Nexus.Chains.Select(x => Nexus.GetChainByName(x)).Where(x => Nexus.GetParentChainByName(x.Name) == sourceChain.Name || Nexus.GetParentChainByName(sourceChain.Name) == x.Name).ToArray();
                             var targetChain = targetChainList[_rnd.Next() % targetChainList.Length];
 
                             var total = UnitConversion.ToBigInteger(1 + _rnd.Next() % 100, DomainSettings.FuelTokenDecimals);

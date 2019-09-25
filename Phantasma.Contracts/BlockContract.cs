@@ -18,9 +18,9 @@ namespace Phantasma.Contracts
             var slotDuration = (int)Runtime.GetGovernanceValue(ValidatorContract.ValidatorRotationTimeTag);
             var chainCreationTime = Runtime.Nexus.GenesisTime;
 
-            if (Runtime.Chain.BlockHeight > 0)
+            if (Runtime.Chain.Height > 0)
             {
-                var lastBlock = Runtime.Chain.LastBlock;
+                var lastBlock = Runtime.GetLastBlock();
                 lastValidator = Runtime.GetValidatorForBlock(Runtime.Chain, lastBlock.Hash);
                 validationSlotTime = lastBlock.Timestamp;
             }
@@ -82,7 +82,7 @@ namespace Phantasma.Contracts
             }
             else
             {
-                Runtime.Expect(Runtime.Chain.IsRoot, "must be root chain");
+                Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
             }
 
             if (previousValidator != from)

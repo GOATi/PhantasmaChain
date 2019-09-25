@@ -118,10 +118,10 @@ namespace Phantasma.Tests
                 $"alias r5, $currentTrigger",
                 $"alias r6, $comparisonResult",
 
-                $@"load $triggerSend, ""{TokenContract.TriggerSend}""",
-                $@"load $triggerReceive, ""{TokenContract.TriggerReceive}""",
-                $@"load $triggerBurn, ""{TokenContract.TriggerBurn}""",
-                $@"load $triggerMint, ""{TokenContract.TriggerMint}""",
+                $@"load $triggerSend, ""{TokenTrigger.OnSend}""",
+                $@"load $triggerReceive, ""{TokenTrigger.OnReceive}""",
+                $@"load $triggerBurn, ""{TokenTrigger.OnBurn}""",
+                $@"load $triggerMint, ""{TokenTrigger.OnMint}""",
                 $"pop $currentTrigger",
 
                 $"equal $triggerSend, $currentTrigger, $comparisonResult",
@@ -150,7 +150,7 @@ namespace Phantasma.Tests
             var script = AssemblerUtils.BuildScript(scriptString);
 
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, $"{symbol}Token", Nexus.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags, script);
+            simulator.GenerateToken(owner, symbol, $"{symbol}Token", DomainSettings.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags, script);
             var tx = simulator.MintTokens(owner, owner.Address, symbol, 1000);
             //simulator.GenerateTransfer(owner, target.Address, simulator.Nexus.RootChain, symbol, 10);
             simulator.EndBlock();
@@ -194,10 +194,10 @@ namespace Phantasma.Tests
                 $"alias r5, $currentTrigger",
                 $"alias r6, $comparisonResult",
 
-                $@"load $triggerSend, ""{TokenContract.TriggerSend}""",
-                $@"load $triggerReceive, ""{TokenContract.TriggerReceive}""",
-                $@"load $triggerBurn, ""{TokenContract.TriggerBurn}""",
-                $@"load $triggerMint, ""{TokenContract.TriggerMint}""",
+                $@"load $triggerSend, ""{TokenTrigger.OnSend}""",
+                $@"load $triggerReceive, ""{TokenTrigger.OnReceive}""",
+                $@"load $triggerBurn, ""{TokenTrigger.OnBurn}""",
+                $@"load $triggerMint, ""{TokenTrigger.OnMint}""",
                 $"pop $currentTrigger",
 
                 $"equal $triggerSend, $currentTrigger, $comparisonResult",
@@ -240,7 +240,7 @@ namespace Phantasma.Tests
             var script = AssemblerUtils.BuildScript(scriptString);
 
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, $"{symbol}Token", Nexus.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags, script);
+            simulator.GenerateToken(owner, symbol, $"{symbol}Token", DomainSettings.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags, script);
             var tx = simulator.MintTokens(owner, owner.Address, symbol, 1000);
             //simulator.GenerateTransfer(owner, target.Address, simulator.Nexus.RootChain, symbol, 10);
             simulator.EndBlock();
@@ -329,7 +329,7 @@ namespace Phantasma.Tests
             simulator.EndBlock();
 
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, $"{symbol}Token", Nexus.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags);
+            simulator.GenerateToken(owner, symbol, $"{symbol}Token", DomainSettings.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags);
             simulator.EndBlock();
 
             Assert.IsTrue(simulator.Nexus.TokenExists(symbol));
@@ -428,7 +428,7 @@ namespace Phantasma.Tests
             simulator.EndBlock();
 
             simulator.BeginBlock();
-            simulator.GenerateToken(target, symbol, $"{symbol}Token", Nexus.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags);
+            simulator.GenerateToken(target, symbol, $"{symbol}Token", DomainSettings.PlatformName, Hash.FromString(symbol), 1000000000, 3, flags);
             var tx = simulator.MintTokens(target, target.Address, symbol, 1000);
             simulator.EndBlock();
 

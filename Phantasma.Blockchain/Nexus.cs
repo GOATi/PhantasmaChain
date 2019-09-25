@@ -26,7 +26,7 @@ namespace Phantasma.Blockchain
 
         public const string NexusProtocolVersionTag = "nexus.protocol.version";
 
-        public Chain RootChain => FindChainByAddress(RootChainAddress);
+        public Chain RootChain => GetChainByAddress(RootChainAddress);
 
         private KeyValueStore<string, byte[]> _vars;
         private Dictionary<string, KeyValueStore<BigInteger, TokenContent>> _tokenContents = new Dictionary<string, KeyValueStore<BigInteger, TokenContent>>();
@@ -244,7 +244,7 @@ namespace Phantasma.Blockchain
                     var chainList = this.Chains;
                     foreach (var chainName in chainList)
                     {
-                        FindChainByName(chainName);
+                        GetChainByName(chainName);
                     }
                 }
             }
@@ -304,7 +304,7 @@ namespace Phantasma.Blockchain
             var chainNames = this.Chains;
             foreach (var chainName in chainNames)
             {
-                var chain = FindChainByName(chainName);
+                var chain = GetChainByName(chainName);
                 if (chain.ContainsBlock(hash))
                 {
                     return chain;
@@ -324,7 +324,7 @@ namespace Phantasma.Blockchain
             var chainNames = this.Chains;
             foreach (var chainName in chainNames)
             {
-                var chain = FindChainByName(chainName);
+                var chain = GetChainByName(chainName);
                 if (chain.ContainsTransaction(hash))
                 {
                     return chain.FindTransactionBlock(hash);
@@ -372,7 +372,7 @@ namespace Phantasma.Blockchain
             return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpScript), address).AsByteArray();
         }
 
-        public bool HasScript(Address address)
+        public bool HasAddressScript(Address address)
         {
             var chain = RootChain;
             return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.HasScript), address).AsBool();
@@ -423,7 +423,7 @@ namespace Phantasma.Blockchain
             var chainNames = this.Chains;
             foreach (var chainName in chainNames)
             {
-                var chain = FindChainByName(chainName);
+                var chain = GetChainByName(chainName);
                 var tx = chain.FindTransactionByHash(hash);
                 if (tx != null)
                 {
@@ -436,30 +436,30 @@ namespace Phantasma.Blockchain
         #endregion
 
         #region CHAINS
-        internal Chain CreateChain(StorageContext storage, Address owner, string name, Chain parentChain, IEnumerable<string> contractNames)
+        internal bool CreateChain(StorageContext storage, Address owner, string name, string parentChainName, IEnumerable<string> contractNames)
         {
             if (name != DomainSettings.RootChainName)
             {
-                if (parentChain == null)
+                if (string.IsNullOrEmpty(parentChainName) || !ChainExists(parentChainName))
                 {
-                    return null;
+                    return false;
                 }
             }
 
             if (!Chain.ValidateName(name))
             {
-                return null;
+                return false;
             }
 
             // check if already exists something with that name
             if (ChainExists(name))
             {
-                return null;
+                return false;
             }
 
             if (contractNames == null)
             {
-                return null;
+                return false;
             }
 
             var chain = new Chain(this, name, _logger);
@@ -501,7 +501,7 @@ namespace Phantasma.Blockchain
 
             _chainCache[chain.Name] = chain;
 
-            return chain;
+            return true;
         }
 
         public string LookUpChainNameByAddress(Address address)
@@ -531,7 +531,7 @@ namespace Phantasma.Blockchain
 
         public string GetParentChainByAddress(Address address)
         {
-            var chain = FindChainByAddress(address);
+            var chain = GetChainByAddress(address);
             if (chain == null)
             {
                 return null;
@@ -559,7 +559,7 @@ namespace Phantasma.Blockchain
 
         public IEnumerable<string> GetChildChainsByAddress(Address chainAddress)
         {
-            var chain = FindChainByAddress(chainAddress);
+            var chain = GetChainByAddress(chainAddress);
             if (chain == null)
             {
                 return null;
@@ -594,7 +594,7 @@ namespace Phantasma.Blockchain
             return list;
         }
 
-        public Chain FindChainByAddress(Address address)
+        public Chain GetChainByAddress(Address address)
         {
             var name = LookUpChainNameByAddress(address);
             if (string.IsNullOrEmpty(name))
@@ -602,10 +602,10 @@ namespace Phantasma.Blockchain
                 return null; // TODO should be exception
             }
 
-            return FindChainByName(name);
+            return GetChainByName(name);
         }
 
-        public Chain FindChainByName(string name)
+        public Chain GetChainByName(string name)
         {
             if (string.IsNullOrEmpty(name))
             {
@@ -1452,7 +1452,7 @@ namespace Phantasma.Blockchain
                 var chain = FindChainForBlock(block);
                 if (chain != null)
                 {
-                    var lastBlock = chain.LastBlock;
+                    var lastBlock = chain.FindBlockByHeight(chain.Height);
                     if (lastBlock != null)
                     {
                         return (int)(1 + (lastBlock.Height - block.Height));
@@ -1595,19 +1595,19 @@ namespace Phantasma.Blockchain
             return true;
         }
 
-        public Archive CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
+        public bool CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
         {
             var archive = FindArchive(merkleTree.Root);
             if (archive != null)
             {
-                return archive;
+                return false;
             }
 
             archive = new Archive(merkleTree, size, flags, key);
             var archiveHash = merkleTree.Root;
             _archiveEntries.Set(archiveHash, archive);
 
-            return archive;
+            return true;
         }
 
         public bool DeleteArchive(Archive archive)

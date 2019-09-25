@@ -103,7 +103,7 @@ namespace Phantasma.Blockchain
                 RejectTransaction(tx, $"should be mined with difficulty of {requiredPoW} or more");
             }
 
-            var chain = Nexus.FindChainByName(tx.ChainName);
+            var chain = Nexus.GetChainByName(tx.ChainName);
             Throw.IfNull(chain, nameof(chain));
 
             if (tx.Signatures == null || tx.Signatures.Length < 1)
@@ -251,7 +251,7 @@ namespace Phantasma.Blockchain
             {
                 foreach (var chainName in _entries.Keys)
                 {
-                    var chain = Nexus.FindChainByName(chainName);
+                    var chain = Nexus.GetChainByName(chainName);
 
                     if (_pendingBlocks.Contains(chain))
                     {
@@ -264,7 +264,8 @@ namespace Phantasma.Blockchain
                         continue;
                     }
 
-                    var lastBlockTime = chain.LastBlock != null ? chain.LastBlock.Timestamp : new Timestamp(0);
+                    var lastBlock = chain.FindBlockByHeight(chain.Height);
+                    var lastBlockTime = lastBlock != null ? lastBlock.Timestamp : new Timestamp(0);
                     var timeDiff = TimeSpan.FromSeconds(Timestamp.Now - lastBlockTime).TotalSeconds;
                     if (timeDiff < this.BlockTime)
                     {
@@ -290,11 +291,12 @@ namespace Phantasma.Blockchain
         {
             var hashes = new HashSet<Hash>(transactions.Select(tx => tx.Hash));
 
-            var isFirstBlock = chain.LastBlock == null;
+            var lastBlock = chain.FindBlockByHeight(chain.Height);
+            var isFirstBlock = lastBlock != null;
 
             while (hashes.Count > 0)
             {
-                var block = new Block(isFirstBlock ? 1 : (chain.LastBlock.Height + 1), chain.Address, Timestamp.Now, hashes, isFirstBlock ? Hash.Null : chain.LastBlock.Hash);
+                var block = new Block(isFirstBlock ? 1 : (lastBlock.Height + 1), chain.Address, Timestamp.Now, hashes, isFirstBlock ? Hash.Null : lastBlock.Hash);
 
                 try
                 {

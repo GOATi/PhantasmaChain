@@ -297,7 +297,7 @@ namespace Phantasma.Tests
             Assert.IsTrue(supply > 0);
 
             Assert.IsTrue(rootChain != null);
-            Assert.IsTrue(rootChain.BlockHeight > 0);
+            Assert.IsTrue(rootChain.Height > 0);
 
             var children = nexus.GetChildChainsByName(rootChain.Name);
             Assert.IsTrue(children.Any());
@@ -318,7 +318,7 @@ namespace Phantasma.Tests
             var simulator = new NexusSimulator(owner, 1234);
 
             var nexus = simulator.Nexus;
-            var accountChain = nexus.FindChainByName("account");
+            var accountChain = nexus.GetChainByName("account");
             var symbol = DomainSettings.FuelTokenSymbol;
             var token = nexus.GetTokenInfo(symbol);
 
@@ -360,12 +360,12 @@ namespace Phantasma.Tests
             var simulator = new NexusSimulator(owner, 1234);
 
             var nexus = simulator.Nexus;
-            var accountChain = nexus.FindChainByName("account");
+            var accountChain = nexus.GetChainByName("account");
             var symbol = "BLA";
 
             var tokenSupply = UnitConversion.ToBigInteger(10000, 18);
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, "BlaToken", Nexus.PlatformName, Hash.FromString(symbol), tokenSupply, 18, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
+            simulator.GenerateToken(owner, symbol, "BlaToken", DomainSettings.PlatformName, Hash.FromString(symbol), tokenSupply, 18, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite | TokenFlags.Divisible);
             simulator.MintTokens(owner, owner.Address, symbol, tokenSupply);
             simulator.EndBlock();
 
@@ -400,12 +400,12 @@ namespace Phantasma.Tests
             var simulator = new NexusSimulator(owner, 1234);
 
             var nexus = simulator.Nexus;
-            var accountChain = nexus.FindChainByName("account");
+            var accountChain = nexus.GetChainByName("account");
             var symbol = "BLA";
 
             var tokenSupply = UnitConversion.ToBigInteger(100000000, 18);
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, "BlaToken", Nexus.PlatformName, Hash.FromString(symbol), tokenSupply, 0, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite);
+            simulator.GenerateToken(owner, symbol, "BlaToken", DomainSettings.PlatformName, Hash.FromString(symbol), tokenSupply, 0, TokenFlags.Transferable | TokenFlags.Fungible | TokenFlags.Finite);
             simulator.MintTokens(owner, owner.Address, symbol, tokenSupply);
             simulator.EndBlock();
 
@@ -724,7 +724,7 @@ namespace Phantasma.Tests
             var nexus = simulator.Nexus;
 
             var sourceChain = nexus.RootChain;
-            var targetChain = nexus.FindChainByName("sale");
+            var targetChain = nexus.GetChainByName("sale");
 
             var symbol = DomainSettings.FuelTokenSymbol;
 
@@ -751,8 +751,7 @@ namespace Phantasma.Tests
             // do a side chain send using test user balance from root to account chain
             simulator.BeginBlock();
             var txA = simulator.GenerateSideChainSend(sender, symbol, sourceChain, receiver.Address, targetChain, sideAmount, crossFee);
-            simulator.EndBlock();
-            var blockA = nexus.RootChain.LastBlock;
+            var blockA = simulator.EndBlock().First();
 
             // finish the chain transfer
             simulator.BeginBlock();
@@ -780,7 +779,7 @@ namespace Phantasma.Tests
             var nexus = simulator.Nexus;
 
             var sourceChain = nexus.RootChain;
-            var targetChain = nexus.FindChainByName("sale");
+            var targetChain = nexus.GetChainByName("sale");
 
             var symbol = DomainSettings.FuelTokenSymbol;
 
@@ -844,7 +843,7 @@ namespace Phantasma.Tests
             var nexus = simulator.Nexus;
 
             var sourceChain = nexus.RootChain;
-            var sideChain = nexus.FindChainByName("sale");
+            var sideChain = nexus.GetChainByName("sale");
             Assert.IsTrue(sideChain != null);
 
             var symbol = DomainSettings.FuelTokenSymbol;
@@ -866,7 +865,7 @@ namespace Phantasma.Tests
             simulator.GenerateChain(owner, sideChain, newChainName);
             simulator.EndBlock();
 
-            var targetChain = nexus.FindChainByName(newChainName);
+            var targetChain = nexus.GetChainByName(newChainName);
 
             // verify test user balance
             var balance = nexus.RootChain.GetTokenBalance(symbol, sender.Address);
@@ -929,7 +928,7 @@ namespace Phantasma.Tests
 
             // Create the token CoolToken as an NFT
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, "CoolToken", Nexus.PlatformName, Hash.FromString(symbol), 0, 0, Domain.TokenFlags.None);
+            simulator.GenerateToken(owner, symbol, "CoolToken", DomainSettings.PlatformName, Hash.FromString(symbol), 0, 0, Domain.TokenFlags.None);
             simulator.EndBlock();
 
             var token = simulator.Nexus.GetTokenInfo(symbol);
@@ -979,7 +978,7 @@ namespace Phantasma.Tests
 
             // Create the token CoolToken as an NFT
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, symbol, "CoolToken", Nexus.PlatformName, Hash.FromString(symbol), 0, 0, TokenFlags.Burnable);
+            simulator.GenerateToken(owner, symbol, "CoolToken", DomainSettings.PlatformName, Hash.FromString(symbol), 0, 0, TokenFlags.Burnable);
             simulator.EndBlock();
 
             // Send some SOUL to the test user (required for gas used in "burn" transaction)
@@ -1049,7 +1048,7 @@ namespace Phantasma.Tests
 
             // Create the token CoolToken as an NFT
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, nftSymbol, nftName, Nexus.PlatformName, Hash.FromString(nftSymbol), 0, 0, TokenFlags.Transferable);
+            simulator.GenerateToken(owner, nftSymbol, nftName, DomainSettings.PlatformName, Hash.FromString(nftSymbol), 0, 0, TokenFlags.Transferable);
             simulator.EndBlock();
 
             var token = simulator.Nexus.GetTokenInfo(nftSymbol);
@@ -1105,7 +1104,7 @@ namespace Phantasma.Tests
             var nexus = simulator.Nexus;
 
             var sourceChain = nexus.RootChain;
-            var targetChain = nexus.FindChainByName("sale");
+            var targetChain = nexus.GetChainByName("sale");
 
             var nftSymbol = "COOL";
 
@@ -1123,7 +1122,7 @@ namespace Phantasma.Tests
 
             // Create the token CoolToken as an NFT
             simulator.BeginBlock();
-            simulator.GenerateToken(owner, nftSymbol, "CoolToken", Nexus.PlatformName, Hash.FromString(nftSymbol), 0, 0, TokenFlags.Transferable);
+            simulator.GenerateToken(owner, nftSymbol, "CoolToken", DomainSettings.PlatformName, Hash.FromString(nftSymbol), 0, 0, TokenFlags.Transferable);
             simulator.EndBlock();
 
             var token = simulator.Nexus.GetTokenInfo(nftSymbol);
@@ -1160,9 +1159,7 @@ namespace Phantasma.Tests
             simulator.BeginBlock();
             simulator.GenerateSideChainSend(sender, DomainSettings.FuelTokenSymbol, sourceChain, receiver.Address, targetChain, smallAmount, extraFee);
             var txA = simulator.GenerateNftSidechainTransfer(sender, receiver.Address, sourceChain, targetChain, nftSymbol, tokenId);
-            simulator.EndBlock();
-
-            var blockA = nexus.RootChain.LastBlock;
+            var blockA = simulator.EndBlock().First();
 
             // finish the chain transfer
             simulator.BeginBlock();
@@ -1191,7 +1188,7 @@ namespace Phantasma.Tests
             var simulator = new NexusSimulator(owner, 1234);
 
             var nexus = simulator.Nexus;
-            var accountChain = nexus.FindChainByName("account");
+            var accountChain = nexus.GetChainByName("account");
 
             var symbol = DomainSettings.FuelTokenSymbol;
             var token = nexus.GetTokenInfo(symbol);
@@ -1253,7 +1250,7 @@ namespace Phantasma.Tests
             var nexus = simulator.Nexus;
 
             var sourceChain = nexus.RootChain;
-            var targetChain = nexus.FindChainByName("sale");
+            var targetChain = nexus.GetChainByName("sale");
 
             var symbol = DomainSettings.FuelTokenSymbol;
             var token = nexus.GetTokenInfo(symbol);
@@ -1277,23 +1274,26 @@ namespace Phantasma.Tests
 
             Transaction txA = null, txB = null;
 
+            Block blockA;
+
             try
             {
                 // do a side chain send using test user balance from root to account chain
                 simulator.BeginBlock();
                 txA = simulator.GenerateSideChainSend(sender, symbol, sourceChain, receiver.Address, targetChain,
                     originalAmount, 1);
-                simulator.EndBlock();
+                blockA = simulator.EndBlock().First();
             }
             catch (Exception e)
             {
+                blockA = null;
                 Assert.IsNotNull(e);
             }
 
+            Assert.IsNotNull(blockA);
+
             try
             {
-                var blockA = nexus.RootChain.LastBlock;
-
                 // finish the chain transfer
                 simulator.BeginBlock();
                 txB = simulator.GenerateSideChainSettlement(sender, nexus.RootChain, targetChain, blockA.Hash);
@@ -1466,7 +1466,7 @@ namespace Phantasma.Tests
             simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(owner.Address, Address.Null, 1, 9999).
-                    CallContract(Nexus.GovernanceContractName, "SetValue", ValidatorContract.ValidatorCountTag, new BigInteger(5)).
+                    CallContract(NativeContractKind.Governance, "SetValue", ValidatorContract.ValidatorCountTag, new BigInteger(5)).
                     SpendGas(owner.Address).
                     EndScript());
             simulator.EndBlock();
@@ -1476,7 +1476,7 @@ namespace Phantasma.Tests
             simulator.GenerateCustomTransaction(secondValidator, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(secondValidator.Address, Address.Null, 1, 9999).
-                    CallContract(Nexus.StakeContractName, "Stake", secondValidator.Address, stakeAmount).
+                    CallContract(NativeContractKind.Stake, "Stake", secondValidator.Address, stakeAmount).
                     SpendGas(secondValidator.Address).
                     EndScript());
             simulator.EndBlock();
@@ -1486,7 +1486,7 @@ namespace Phantasma.Tests
             var tx = simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>
                 ScriptUtils.BeginScript().
                     AllowGas(owner.Address, Address.Null, 1, 9999).
-                    CallContract(Nexus.ValidatorContractName, "SetValidator", secondValidator.Address, 1, ValidatorType.Primary).
+                    CallContract(NativeContractKind.Validator, "SetValidator", secondValidator.Address, 1, ValidatorType.Primary).
                     SpendGas(owner.Address).
                     EndScript());
             var block = simulator.EndBlock().First();
