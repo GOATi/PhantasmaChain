@@ -6,19 +6,15 @@ using Phantasma.Storage.Context;
 
 namespace Phantasma.Contracts
 {
-    public sealed class ValidatorContract : SmartContract
+    public sealed class ValidatorContract : NativeContract
     {
+        public override NativeContractKind Kind => NativeContractKind.Validator;
+
         public const string ValidatorCountTag = "validator.count";
         public const string ValidatorRotationTimeTag = "validator.rotation.time";
         public const string ValidatorPollTag = "elections";
 
-        public override string Name => Nexus.ValidatorContractName;
-
         private StorageMap _validators; // <BigInteger, ValidatorInfo>
-
-        public ValidatorContract() : base()
-        {
-        }
 
         public ValidatorEntry[] GetValidators()
         {
@@ -185,8 +181,8 @@ namespace Phantasma.Contracts
             var expectedType = index < GetMaxPrimaryValidators() ? ValidatorType.Primary : ValidatorType.Secondary;
             Runtime.Expect(type == expectedType, "unexpected validator type");
 
-            var requiredStake = Runtime.CallContext(Nexus.StakeContractName, "GetMasterThreshold", from).AsNumber();
-            var stakedAmount = Runtime.CallContext(Nexus.StakeContractName, "GetStake", from).AsNumber();
+            var requiredStake = Runtime.CallContext(NativeContractKind.Stake, "GetMasterThreshold", from).AsNumber();
+            var stakedAmount = Runtime.GetStake(from);
 
             Runtime.Expect(stakedAmount >= requiredStake, "not enough stake");
 

@@ -29,6 +29,7 @@ namespace Phantasma.Domain
         Privacy,
         Relay,
         Bomb,
+        Market,
     }
 
     public sealed class ContractInterface

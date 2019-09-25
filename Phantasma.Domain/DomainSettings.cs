@@ -1,7 +1,26 @@
-﻿using Phantasma.Numerics;
+﻿using Phantasma.Cryptography;
+using Phantasma.Numerics;
 
 namespace Phantasma.Domain
 {
+    public enum AccountTrigger
+    {
+        OnMint, // address, symbol, amount
+        OnBurn, // address, symbol, amount
+        OnSend, // address, symbol, amount
+        OnReceive, // address, symbol, amount
+        OnWitness, // address
+    }
+
+    public enum TokenTrigger
+    {
+        OnMint, // address, symbol, amount
+        OnBurn, // address, symbol, amount
+        OnSend, // address, symbol, amount
+        OnReceive, // address, symbol, amount
+        OnMetadata // address, symbol, key, value
+    }
+
     public static class DomainSettings
     {
         public const string FuelTokenSymbol = "KCAL";
@@ -16,7 +35,13 @@ namespace Phantasma.Domain
         public const string FiatTokenName = "Dollars";
         public const int FiatTokenDecimals = 8;
 
+        public const string RootChainName = "main";
+
         public static readonly BigInteger PlatformSupply = UnitConversion.ToBigInteger(100000000, FuelTokenDecimals);
         public static readonly string PlatformName = "phantasma";
+
+        public static readonly int ArchiveMinSize = 1024; //1kb
+        public static readonly int ArchiveMaxSize = 104857600; //100mb
+        public static readonly uint ArchiveBlockSize = MerkleTree.ChunkSize;
     }
 }

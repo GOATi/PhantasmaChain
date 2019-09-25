@@ -1,25 +1,31 @@
 ﻿using System;
+using System.Text;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
-using Phantasma.Core.Utils;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using Phantasma.Core;
 using Phantasma.VM;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
-using System.Text;
-using System.IO;
 using Phantasma.Domain;
 
 namespace Phantasma.Contracts
 {
-    public class SmartContract : IContract
+    public abstract class NativeContract : SmartContract
+    {
+        public override string Name => Kind.GetName();
+
+        public abstract NativeContractKind Kind { get; }
+    }
+
+    public abstract class SmartContract : IContract
     {
         public ContractInterface ABI { get; private set; }
-        public string Name { get; private set; }
-        
+        public abstract string Name { get; }
+
         public IRuntime Runtime { get; private set; }
 
         public void SetRuntime(IRuntime runtime)
@@ -43,22 +49,19 @@ namespace Phantasma.Contracts
             }
         }
 
-        public SmartContract(Type type)
+        public SmartContract()
         {
-            Throw.If(!typeof(IContract).IsAssignableFrom(type), "not a valid smart contract type");
-
-            this.Name = type.Name.Replace("Contract", "");
-            BuildMethodTable(type);
+            BuildMethodTable(this.GetType());
 
             _address = Address.Null;
         }
 
         // here we auto-initialize any fields from storage
-        internal void LoadRuntimeData(RuntimeVM VM)
+        internal void LoadRuntimeData(IRuntime VM)
         {
             if (this.Runtime != null && this.Runtime != VM)
             {
-                throw new ChainException("runtime already set on this contract");
+                Runtime.Throw("runtime already set on this contract");
             }
 
             this.Runtime = VM;
@@ -84,9 +87,9 @@ namespace Phantasma.Contracts
                 {
                     ISerializable obj;
 
-                    if (VM.ChangeSet.Has(baseKey))
+                    if (VM.Storage.Has(baseKey))
                     {
-                        var bytes = VM.ChangeSet.Get(baseKey);
+                        var bytes = VM.Storage.Get(baseKey);
                         obj = (ISerializable)Activator.CreateInstance(field.FieldType);
                         using (var stream = new MemoryStream(bytes))
                         {
@@ -101,9 +104,9 @@ namespace Phantasma.Contracts
                     }
                 }
 
-                if (VM.ChangeSet.Has(baseKey))
+                if (VM.Storage.Has(baseKey))
                 {
-                    var obj = VM.ChangeSet.Get(baseKey, field.FieldType);
+                    var obj = VM.Storage.Get(baseKey, field.FieldType);
                     field.SetValue(this, obj);
                     continue;
                 }
@@ -115,7 +118,7 @@ namespace Phantasma.Contracts
         {
             Throw.IfNull(this.Runtime, nameof(Runtime));
 
-            if (Runtime.readOnlyMode)
+            if (Runtime.IsReadOnlyMode())
             {
                 return;
             }
@@ -137,13 +140,13 @@ namespace Phantasma.Contracts
                 {
                     var obj = (ISerializable)field.GetValue(this);
                     var bytes = obj.Serialize();
-                    this.Runtime.ChangeSet.Put(baseKey, bytes);
+                    this.Runtime.Storage.Put(baseKey, bytes);
                 }
                 else
                 {
                     var obj = field.GetValue(this);
                     var bytes = Serialization.Serialize(obj);
-                    this.Runtime.ChangeSet.Put(baseKey, bytes);
+                    this.Runtime.Storage.Put(baseKey, bytes);
                 }
             }
         }
@@ -166,9 +169,9 @@ namespace Phantasma.Contracts
                 return false;
             }
 
-            if (address.IsUser && Runtime.Nexus.HasScript(address))
+            if (address.IsUser && Runtime.HasAddressScript(address))
             {
-                return InvokeTriggerOnAccount(Runtime, address, AccountTrigger.OnWitness, address);
+                return Runtime.InvokeTriggerOnAccount(address, AccountTrigger.OnWitness, address);
             }
 
             return Runtime.Transaction.IsSignedBy(address);
@@ -234,13 +237,13 @@ namespace Phantasma.Contracts
             this.ABI = new ContractInterface(methods);
         }
 
-        internal bool HasInternalMethod(string methodName, out BigInteger gasCost)
+        public bool HasInternalMethod(string methodName, out BigInteger gasCost)
         {
             gasCost = 10; // TODO make this depend on method
             return _methodTable.ContainsKey(methodName);
         }
 
-        internal object CallInternalMethod(RuntimeVM runtime, string name, object[] args)
+        public object CallInternalMethod(IRuntime runtime, string name, object[] args)
         {
             Throw.If(!_methodTable.ContainsKey(name), "unknowm internal method");
 
@@ -256,7 +259,7 @@ namespace Phantasma.Contracts
             return method.Invoke(this, args);
         }
 
-        private object CastArgument(RuntimeVM runtime, object arg, Type expectedType)
+        private object CastArgument(IRuntime runtime, object arg, Type expectedType)
         {
             if (arg == null)
             {
@@ -334,7 +337,7 @@ namespace Phantasma.Contracts
                 {
                     // when a string is passed instead of an address we do an automatic lookup and replace
                     var name = (string)arg;
-                    var address = runtime.Nexus.LookUpName(name);
+                    var address = runtime.LookUpName(name);
                     return address;
                 }
             }
@@ -370,12 +373,12 @@ namespace Phantasma.Contracts
         #region SIDE CHAINS
         public bool IsChain(Address address)
         {
-            return Runtime.Nexus.FindChainByAddress(address) != null;
+            return Runtime.GetChainByAddress(address) != null;
         }
 
         public bool IsRootChain(Address address)
         {
-            var chain = Runtime.Nexus.FindChainByAddress(address);
+            var chain = Runtime.GetChainByAddress(address);
             if (chain == null)
             {
                 return false;
@@ -386,7 +389,7 @@ namespace Phantasma.Contracts
 
         public bool IsSideChain(Address address)
         {
-            var chain = Runtime.Nexus.FindChainByAddress(address);
+            var chain = Runtime.GetChainByAddress(address);
             if (chain == null)
             {
                 return false;
@@ -402,83 +405,15 @@ namespace Phantasma.Contracts
                 return false;
             }
 
-            return address == this.Runtime.ParentChain.Address;
+            var parentChain = this.Runtime.GetChainParent(this.Runtime.Chain.Name);
+            return address == parentChain.Address;
         }
 
         public bool IsAddressOfChildChain(Address address)
         {
-            var parentName = Runtime.Nexus.GetParentChainByAddress(address);
-            var parent = Runtime.Nexus.FindChainByName(parentName);
-            if (parent== null)
-            {
-                return false;
-            }
-
-            return parent.Address == this.Runtime.Chain.Address;
-        }
-        #endregion
-
-        #region TRIGGERS
-        public static bool InvokeTriggerOnAccount(RuntimeVM runtimeVM, Address address, AccountTrigger trigger, params object[] args)
-        {
-            if (address.IsNull)
-            {
-                return false;
-            }
-
-            if (address.IsUser)
-            {
-                var accountScript = runtimeVM.Nexus.LookUpAddressScript(address);
-                return InvokeTrigger(runtimeVM, accountScript, trigger.ToString(), args);
-            }
-
-            return true;
-        }
-
-        public static bool InvokeTriggerOnToken(RuntimeVM runtimeVM, TokenInfo token, TokenTrigger trigger, params object[] args)
-        {
-            return InvokeTrigger(runtimeVM, token.Script, trigger.ToString(), args);
-        }
-
-        public static bool InvokeTrigger(RuntimeVM runtimeVM, byte[] script, string triggerName, params object[] args)
-        {
-            if (script == null || script.Length == 0)
-            {
-                return true;
-            }
-
-            var leftOverGas = (uint)(runtimeVM.MaxGas - runtimeVM.UsedGas);
-            var runtime = new RuntimeVM(script, runtimeVM.Chain, runtimeVM.Time, runtimeVM.Transaction, runtimeVM.ChangeSet, runtimeVM.Oracle, false, true);
-            runtime.ThrowOnFault = true;
-
-            for (int i=args.Length - 1; i>=0; i--)
-            {
-                var obj = VMObject.FromObject(args[i]);
-                runtime.Stack.Push(obj);
-            }
-            runtime.Stack.Push(VMObject.FromObject(triggerName));
-
-            var state = runtime.Execute();
-            // TODO catch VM exceptions?
-
-            // propagate gas consumption
-            // TODO this should happen not here but in real time during previous execution, to prevent gas attacks
-            runtimeVM.ConsumeGas(runtime.UsedGas);
-
-            if (state == ExecutionState.Halt)
-            {
-                // propagate events to the other runtime
-                foreach (var evt in runtime.Events)
-                {
-                    runtimeVM.Notify(evt.Kind, evt.Address, evt.Data);
-                }
-              
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            var targetChain = Runtime.GetChainByAddress(address);
+            var parentChain = Runtime.GetChainParent(targetChain.Name);
+            return parentChain.Name == this.Runtime.Chain.Name;
         }
         #endregion
     }

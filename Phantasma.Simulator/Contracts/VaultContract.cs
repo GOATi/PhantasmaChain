@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Simulator.Contracts
 {
     internal struct VaultEntry
     {

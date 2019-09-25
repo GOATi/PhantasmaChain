@@ -1,14 +1,13 @@
-using Phantasma.Blockchain.Tokens;
+using System;
+using Phantasma.Domain;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Cryptography.EdDSA;
 using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
-using System;
-using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderSide;
-using static Phantasma.Blockchain.Contracts.Native.ExchangeOrderType;
-using Phantasma.Domain;
+using static Phantasma.Contracts.ExchangeOrderSide;
+using static Phantasma.Contracts.ExchangeOrderType;
 
 namespace Phantasma.Contracts
 {
@@ -78,7 +77,7 @@ namespace Phantasma.Contracts
         }
     }
 
-    public struct TokenSwap
+    public struct ExchangeSwap
     {
         public Address buyer;
         public Address seller;
@@ -96,9 +95,9 @@ namespace Phantasma.Contracts
         public Hash dapp;
     }
 
-    public sealed class ExchangeContract : SmartContract
+    public sealed class ExchangeContract : NativeContract
     {
-        public override string Name => Nexus.ExchangeContractName;
+        public override NativeContractKind Kind => NativeContractKind.Exchange;
 
         internal StorageList _availableBases; // string
         internal StorageList _availableQuotes; // string
@@ -116,11 +115,11 @@ namespace Phantasma.Contracts
         private string BuildOrderKey(ExchangeOrderSide side, string baseSymbol, string quoteSymbol) => $"{side}_{baseSymbol}_{quoteSymbol}";
 
         public BigInteger GetMinimumQuantity(BigInteger tokenDecimals) => BigInteger.Pow(10, tokenDecimals / 2);
-        public BigInteger GetMinimumTokenQuantity(TokenInfo token) => GetMinimumQuantity(token.Decimals);
+        public BigInteger GetMinimumTokenQuantity(IToken token) => GetMinimumQuantity(token.Decimals);
 
         public BigInteger GetMinimumSymbolQuantity(string symbol)
         {
-            var token = Runtime.Nexus.GetTokenInfo(symbol);
+            var token = Runtime.GetToken(symbol);
             return GetMinimumQuantity(token.Decimals);
         }
 
@@ -168,12 +167,12 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(baseSymbol != quoteSymbol, "invalid base/quote pair");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(baseSymbol), "invalid base token");
-            var baseToken = Runtime.Nexus.GetTokenInfo(baseSymbol);
-            Runtime.Expect(baseToken.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
+            Runtime.Expect(Runtime.TokenExists(baseSymbol), "invalid base token");
+            var baseToken = Runtime.GetToken(baseSymbol);
+            Runtime.Expect(baseToken.IsFungible(), "token must be fungible");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(quoteSymbol), "invalid quote token");
-            var quoteToken = Runtime.Nexus.GetTokenInfo(quoteSymbol);
+            Runtime.Expect(Runtime.TokenExists(quoteSymbol), "invalid quote token");
+            var quoteToken = Runtime.GetToken(quoteSymbol);
             Runtime.Expect(quoteToken.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
 
             if (orderType != Market)
@@ -182,12 +181,12 @@ namespace Phantasma.Contracts
                 Runtime.Expect(price >= GetMinimumTokenQuantity(quoteToken), "order price is not sufficient");
             }
 
-            var uid = Runtime.Chain.GenerateUID(this.Storage);
+            var uid = Runtime.GenerateUID();
 
             //--------------
             //perform escrow for non-market orders
             string orderEscrowSymbol = CalculateEscrowSymbol(baseToken, quoteToken, side);
-            TokenInfo orderEscrowToken = orderEscrowSymbol == baseSymbol ? baseToken : quoteToken;
+            IToken orderEscrowToken = orderEscrowSymbol == baseSymbol ? baseToken : quoteToken;
             BigInteger orderEscrowAmount;
             BigInteger orderEscrowUsage = 0;
 
@@ -201,13 +200,10 @@ namespace Phantasma.Contracts
                 orderEscrowAmount = CalculateEscrowAmount(orderSize, price, baseToken, quoteToken, side);
             }
 
-            //BigInteger baseTokensUnfilled = orderSize;
-
-            var balances = new BalanceSheet(orderEscrowSymbol);
-            var balance = balances.Get(this.Storage, from);
+            var balance = Runtime.GetBalance(orderEscrowToken, from);
             Runtime.Expect(balance >= orderEscrowAmount, "not enough balance");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, orderEscrowSymbol, from, this.Address, orderEscrowAmount), "transfer failed");
+            Runtime.Expect(Runtime.TransferTokens(orderEscrowSymbol, from, this.Address, orderEscrowAmount), "transfer failed");
             //------------
 
             var thisOrder = new ExchangeOrder();
@@ -310,8 +306,8 @@ namespace Phantasma.Contracts
                         break;
                     }
 
-                    Runtime.Nexus.TransferTokens(Runtime, takerEscrowSymbol, this.Address, makerOrder.Creator, takerEscrowUsage);
-                    Runtime.Nexus.TransferTokens(Runtime, makerEscrowSymbol, this.Address, takerOrder.Creator, makerEscrowUsage);
+                    Runtime.TransferTokens(takerEscrowSymbol, this.Address, makerOrder.Creator, takerEscrowUsage);
+                    Runtime.TransferTokens(makerEscrowSymbol, this.Address, takerOrder.Creator, makerEscrowUsage);
 
                     Runtime.Notify(EventKind.TokenReceive, makerOrder.Creator, new TokenEventData() { chainAddress = this.Address, symbol = takerEscrowSymbol, value = takerEscrowUsage });
                     Runtime.Notify(EventKind.TokenReceive, takerOrder.Creator, new TokenEventData() { chainAddress = this.Address, symbol = makerEscrowSymbol, value = makerEscrowUsage });
@@ -350,7 +346,7 @@ namespace Phantasma.Contracts
 
                 if (leftoverEscrow > 0)
                 {
-                    Runtime.Nexus.TransferTokens(Runtime, orderEscrowSymbol, this.Address, thisOrder.Creator, leftoverEscrow);
+                    Runtime.TransferTokens(orderEscrowSymbol, this.Address, thisOrder.Creator, leftoverEscrow);
                     Runtime.Notify(EventKind.TokenReceive, thisOrder.Creator, new TokenEventData() { chainAddress = this.Address, symbol = orderEscrowSymbol, value = leftoverEscrow });
                     Runtime.Notify(EventKind.OrderCancelled, thisOrder.Creator, thisOrder.Uid);
                 }
@@ -409,7 +405,7 @@ namespace Phantasma.Contracts
                         if (leftoverEscrow > 0)
                         {
                             var escrowSymbol = order.Side == ExchangeOrderSide.Sell ? order.QuoteSymbol : order.BaseSymbol;
-                            Runtime.Nexus.TransferTokens(Runtime, escrowSymbol, this.Address, order.Creator, leftoverEscrow);
+                            Runtime.TransferTokens(escrowSymbol, this.Address, order.Creator, leftoverEscrow);
                             Runtime.Notify(EventKind.TokenReceive, order.Creator, new TokenEventData() { chainAddress = this.Address, symbol = escrowSymbol, value = leftoverEscrow });
                         }
                     }
@@ -430,7 +426,7 @@ namespace Phantasma.Contracts
          TODO: implement code for trail stops and a method to allow a 3rd party to update the trail stop, without revealing user or order info
          */
 
-        public BigInteger CalculateEscrowAmount(BigInteger orderSize, BigInteger orderPrice, TokenInfo baseToken, TokenInfo quoteToken, ExchangeOrderSide side)
+        public BigInteger CalculateEscrowAmount(BigInteger orderSize, BigInteger orderPrice, IToken baseToken, IToken quoteToken, ExchangeOrderSide side)
         {
             switch (side)
             {
@@ -440,16 +436,18 @@ namespace Phantasma.Contracts
                 case Buy:
                     return UnitConversion.ToBigInteger(UnitConversion.ToDecimal(orderSize, baseToken.Decimals) * UnitConversion.ToDecimal(orderPrice, quoteToken.Decimals), quoteToken.Decimals);
 
-                default: throw new ContractException("invalid order side");
+                default:
+                    Runtime.Throw("invalid order side");
+                    return -1;
             }
         }
 
-        private BigInteger ConvertQuoteToBase(BigInteger quoteAmount, BigInteger orderPrice, TokenInfo baseToken, TokenInfo quoteToken)
+        private BigInteger ConvertQuoteToBase(BigInteger quoteAmount, BigInteger orderPrice, IToken baseToken, IToken quoteToken)
         {
             return UnitConversion.ToBigInteger(UnitConversion.ToDecimal(quoteAmount, quoteToken.Decimals) / UnitConversion.ToDecimal(orderPrice, quoteToken.Decimals), baseToken.Decimals);
         }
 
-        public string CalculateEscrowSymbol(TokenInfo baseToken, TokenInfo quoteToken, ExchangeOrderSide side) => side == Sell ? baseToken.Symbol : quoteToken.Symbol;
+        public string CalculateEscrowSymbol(IToken baseToken, IToken quoteToken, ExchangeOrderSide side) => side == Sell ? baseToken.Symbol : quoteToken.Symbol;
 
         public ExchangeOrder GetExchangeOrder(BigInteger uid)
         {
@@ -524,15 +522,14 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(seller.IsUser, "seller must be user address");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(baseSymbol), "invalid base token");
-            var baseToken = Runtime.Nexus.GetTokenInfo(baseSymbol);
+            Runtime.Expect(Runtime.TokenExists(baseSymbol), "invalid base token");
+            var baseToken = Runtime.GetToken(baseSymbol);
             Runtime.Expect(baseToken.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
 
-            var baseBalances = new BalanceSheet(baseSymbol);
-            var baseBalance = baseBalances.Get(this.Storage, seller);
+            var baseBalance = Runtime.GetBalance(baseSymbol, seller);
             Runtime.Expect(baseBalance >= amount, "invalid amount");
 
-            var swap = new TokenSwap()
+            var swap = new ExchangeSwap()
             {
                 baseSymbol = baseSymbol,
                 quoteSymbol = quoteSymbol,
@@ -545,16 +542,15 @@ namespace Phantasma.Contracts
             var msg = Serialization.Serialize(swap);
             Runtime.Expect(Ed25519.Verify(signature, msg, seller.PublicKey), "invalid signature");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(quoteSymbol), "invalid quote token");
-            var quoteToken = Runtime.Nexus.GetTokenInfo(quoteSymbol);
+            Runtime.Expect(Runtime.TokenExists(quoteSymbol), "invalid quote token");
+            var quoteToken = Runtime.GetToken(quoteSymbol);
             Runtime.Expect(quoteToken.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
 
-            var quoteBalances = new BalanceSheet(quoteSymbol);
-            var quoteBalance = quoteBalances.Get(this.Storage, buyer);
+            var quoteBalance = Runtime.GetBalance(quoteSymbol, buyer);
             Runtime.Expect(quoteBalance >= price, "invalid balance");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, quoteSymbol, buyer, seller, price), "payment failed");
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, baseSymbol, seller, buyer, amount), "transfer failed");
+            Runtime.Expect(Runtime.TransferTokens(quoteSymbol, buyer, seller, price), "payment failed");
+            Runtime.Expect(Runtime.TransferTokens(baseSymbol, seller, buyer, amount), "transfer failed");
 
             Runtime.Notify(EventKind.TokenSend, seller, new TokenEventData() { chainAddress = this.Address, symbol = baseSymbol, value = amount });
             Runtime.Notify(EventKind.TokenSend, buyer, new TokenEventData() { chainAddress = this.Address, symbol = quoteSymbol, value = price });
@@ -570,15 +566,17 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(seller.IsUser, "seller must be user address");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(baseSymbol), "invalid base token");
-            var baseToken = Runtime.Nexus.GetTokenInfo(baseSymbol);
+            Runtime.Expect(Runtime.TokenExists(baseSymbol), "invalid base token");
+            var baseToken = Runtime.GetToken(baseSymbol);
             Runtime.Expect(!baseToken.Flags.HasFlag(TokenFlags.Fungible), "token must be non-fungible");
 
-            var ownerships = new OwnershipSheet(baseSymbol);
-            var owner = ownerships.GetOwner(this.Storage, tokenID);
+            var nft = Runtime.GetNFT(baseSymbol, tokenID);
+            Runtime.Expect(nft.CurrentChain == Runtime.Chain.Name, "nft not on this chain");
+
+            var owner = nft.CurrentOwner;
             Runtime.Expect(owner == seller, "invalid owner");
 
-            var swap = new TokenSwap()
+            var swap = new ExchangeSwap()
             {
                 baseSymbol = baseSymbol,
                 quoteSymbol = quoteSymbol,
@@ -591,16 +589,15 @@ namespace Phantasma.Contracts
             var msg = Serialization.Serialize(swap);
             Runtime.Expect(Ed25519.Verify(signature, msg, seller.PublicKey), "invalid signature");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(quoteSymbol), "invalid quote token");
-            var quoteToken = Runtime.Nexus.GetTokenInfo(quoteSymbol);
+            Runtime.Expect(Runtime.TokenExists(quoteSymbol), "invalid quote token");
+            var quoteToken = Runtime.GetToken(quoteSymbol);
             Runtime.Expect(quoteToken.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
 
-            var balances = new BalanceSheet(quoteSymbol);
-            var balance = balances.Get(this.Storage, buyer);
+            var balance = Runtime.GetBalance(quoteSymbol, buyer);
             Runtime.Expect(balance >= price, "invalid balance");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, quoteSymbol, buyer, owner, price), "payment failed");
-            Runtime.Expect(Runtime.Nexus.TransferToken(Runtime, baseSymbol, owner, buyer, tokenID), "transfer failed");
+            Runtime.Expect(Runtime.TransferTokens(quoteSymbol, buyer, owner, price), "payment failed");
+            Runtime.Expect(Runtime.TransferToken(baseSymbol, owner, buyer, tokenID), "transfer failed");
 
             Runtime.Notify(EventKind.TokenSend, seller, new TokenEventData() { chainAddress = this.Address, symbol = baseSymbol, value = tokenID });
             Runtime.Notify(EventKind.TokenSend, buyer, new TokenEventData() { chainAddress = this.Address, symbol = quoteSymbol, value = price });

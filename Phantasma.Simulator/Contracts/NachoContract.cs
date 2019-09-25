@@ -2132,7 +2132,7 @@ namespace Phantasma.Blockchain.Contracts.Native
         public bool itemActivated;
     }
 
-    public sealed class NachoContract : BaseContract
+    public sealed class NachoContract : SmartContract
     {
         public override string Name => "nacho";
 

@@ -2,8 +2,6 @@ using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Numerics;
 using Phantasma.Storage.Context;
-using System;
-using System.Runtime.InteropServices;
 
 namespace Phantasma.Contracts
 {
@@ -13,9 +11,9 @@ namespace Phantasma.Contracts
         public Hash hash;
     }
 
-    public sealed class StorageContract : SmartContract
+    public sealed class StorageContract : NativeContract
     {
-        public override string Name => Nexus.StorageContractName;
+        public override NativeContractKind Kind => NativeContractKind.Storage;
 
         public const int KilobytesPerStake = 40;
 
@@ -29,7 +27,7 @@ namespace Phantasma.Contracts
         public static BigInteger CalculateStorageSizeForStake(BigInteger stakeAmount)
         {
             var availableSize = stakeAmount * KilobytesPerStake * 1024;
-            availableSize /= UnitConversion.GetUnitValue(Nexus.StakingTokenDecimals);
+            availableSize /= UnitConversion.GetUnitValue(DomainSettings.StakingTokenDecimals);
 
             return availableSize;
         }
@@ -38,22 +36,21 @@ namespace Phantasma.Contracts
         {
             Runtime.Expect(IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "address must be user address");
-            Runtime.Expect(contentSize >= Archive.MinSize, "file too small");
-            Runtime.Expect(contentSize <= Archive.MaxSize, "file too big");
+            Runtime.Expect(contentSize >= DomainSettings.ArchiveMinSize, "file too small");
+            Runtime.Expect(contentSize <= DomainSettings.ArchiveMaxSize, "file too big");
 
             BigInteger requiredSize = CalculateRequiredSize(name, contentSize);
 
             var usedSize = GetUsedSpace(from);
 
-            var stakedAmount = Runtime.CallContext(Nexus.StakeContractName, "GetStake", from).AsNumber();
+            var stakedAmount = Runtime.GetStake(from);
             var availableSize = CalculateStorageSizeForStake(stakedAmount);
             
-
             availableSize -= usedSize;
             Runtime.Expect(availableSize >= requiredSize, "account does not have available space");
 
             var hashes = MerkleTree.FromBytes(contentMerkle);
-            Runtime.Expect(Runtime.Nexus.CreateArchive(hashes, contentSize, flags, key) != null, "archive creation failed");
+            Runtime.Expect(Runtime.CreateArchive(hashes, contentSize, flags, key), "archive creation failed");
 
             var newEntry = new StorageEntry()
             {
@@ -89,8 +86,8 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(targetIndex >= 0, "file not found");
 
-            var archive = Runtime.Nexus.FindArchive(targetHash);
-            Runtime.Expect(Runtime.Nexus.DeleteArchive(archive), "deletion failed");
+            Runtime.Expect(Runtime.ArchiveExists(targetHash), " archive not found");
+            Runtime.Expect(Runtime.DeleteArchive(targetHash), "deletion failed");
 
             list.RemoveAt<StorageEntry>(targetIndex);
             Runtime.Notify(EventKind.FileDelete, from, name);
@@ -109,7 +106,7 @@ namespace Phantasma.Contracts
             for (int i = 0; i < count; i++)
             {
                 var entry = list[i];
-                var archive = Runtime.Nexus.FindArchive(entry.hash);
+                var archive = Runtime.GetArchive(entry.hash);
                 Runtime.Expect(archive != null, "missing archive");
                 usedSize += archive.Size;
                 usedSize += entry.Name.Length;

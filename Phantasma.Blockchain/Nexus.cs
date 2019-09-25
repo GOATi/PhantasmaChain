@@ -10,16 +10,15 @@ using Phantasma.Storage;
 using Phantasma.Numerics;
 using Phantasma.VM.Utils;
 using Phantasma.Blockchain.Contracts;
-using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Storage.Context;
 using Phantasma.Domain;
+using Phantasma.Contracts;
 
 namespace Phantasma.Blockchain
 {
     public class Nexus: INexus
     {
-        public static readonly string RootChainName = "main";
         private static readonly string ChainNameMapKey = "chain.name.";
         private static readonly string ChainAddressMapKey = "chain.addr.";
         private static readonly string ChainParentNameKey = "chain.parent.";
@@ -393,22 +392,23 @@ namespace Phantasma.Blockchain
                 case "governance": contract = new GovernanceContract(); break;
                 case "consensus": contract = new ConsensusContract(); break;
                 case "account":  contract  = new AccountContract(); break;
-                case "friends": contract  = new FriendContract(); break;
                 case "exchange": contract  = new ExchangeContract(); break;
                 case "market":    contract  = new MarketContract(); break;
-                case Nexus.StakeContractName:   contract  = new StakeContract(); break;
+                case "stake":   contract  = new StakeContract(); break;
                 case "token": contract = new TokenContract(); break;
                 case "swap": contract = new SwapContract(); break;
                 case "gas": contract = new GasContract(); break;
                 case "block": contract = new BlockContract(); break;
                 case "relay": contract = new RelayContract(); break;
                 case "storage": contract  = new StorageContract(); break;
+                case "dex": contract = new ExchangeContract(); break;
+                case "interop": contract = new InteropContract(); break;
+                /*case "friends": contract  = new FriendContract(); break;
                 case "vault": contract  = new VaultContract(); break;
                 case "apps": contract  = new AppsContract(); break;
-                case "dex": contract = new ExchangeContract(); break;
                 case "sale": contract = new SaleContract(); break;
-                case "interop": contract = new InteropContract(); break;
                 case "nacho": contract = new NachoContract(); break;
+                */
                 default:
                     throw new Exception("Unknown contract: " + contractName);
             }
@@ -439,7 +439,7 @@ namespace Phantasma.Blockchain
         #region CHAINS
         internal Chain CreateChain(StorageContext storage, Address owner, string name, Chain parentChain, IEnumerable<string> contractNames)
         {
-            if (name != RootChainName)
+            if (name != DomainSettings.RootChainName)
             {
                 if (parentChain == null)
                 {
@@ -466,9 +466,9 @@ namespace Phantasma.Blockchain
             var chain = new Chain(this, name, _logger);
 
             var contractSet = new HashSet<string>(contractNames);
-            contractSet.Add(GasContractName);
-            contractSet.Add(TokenContractName);
-            contractSet.Add(BlockContractName);
+            contractSet.Add(NativeContractKind.Gas.GetName());
+            contractSet.Add(NativeContractKind.Token.GetName());
+            contractSet.Add(NativeContractKind.Block.GetName());
             chain.DeployContracts(contractSet);
 
             // add to persistent list of chains
@@ -1593,7 +1593,8 @@ namespace Phantasma.Blockchain
 
         public bool IsArchiveComplete(Archive archive)
         {
-            for (int i=0; i<archive.BlockCount; i++)
+            var count = archive.GetBlockCount();
+            for (int i = 0; i < count; i++)
             {
                 if (!HasArchiveBlock(archive, i))
                 {
@@ -1623,7 +1624,8 @@ namespace Phantasma.Blockchain
         {
             Throw.IfNull(archive, nameof(archive));
 
-            for (int i = 0; i < archive.BlockCount; i++)
+            var count = archive.GetBlockCount();
+            for (int i = 0; i < count; i++)
             {
                 var blockHash = archive.MerkleTree.GetHash(i);
                 if (_archiveContents.ContainsKey(blockHash))
@@ -1640,7 +1642,9 @@ namespace Phantasma.Blockchain
         public bool HasArchiveBlock(Archive archive, int blockIndex)
         {
             Throw.IfNull(archive, nameof(archive));
-            Throw.If(blockIndex < 0 || blockIndex >= archive.BlockCount, "invalid block index");
+
+            var count = archive.GetBlockCount();
+            Throw.If(blockIndex < 0 || blockIndex >= count, "invalid block index");
 
             var hash = archive.MerkleTree.GetHash(blockIndex);
             return _archiveContents.ContainsKey(hash);
@@ -1650,7 +1654,9 @@ namespace Phantasma.Blockchain
         {
             Throw.IfNull(archive, nameof(archive));
             Throw.IfNull(content, nameof(content));
-            Throw.If(blockIndex < 0 || blockIndex >= archive.BlockCount, "invalid block index");
+
+            var count = archive.GetBlockCount();
+            Throw.If(blockIndex < 0 || blockIndex >= count, "invalid block index");
 
             var hash = MerkleTree.CalculateBlockHash(content);
             if (!archive.MerkleTree.VerifyContent(hash, blockIndex))
@@ -1664,7 +1670,9 @@ namespace Phantasma.Blockchain
         public byte[] ReadArchiveBlock(Archive archive, int blockIndex)
         {
             Throw.IfNull(archive, nameof(archive));
-            Throw.If(blockIndex < 0 || blockIndex >= archive.BlockCount, "invalid block index");
+
+            var count = archive.GetBlockCount();
+            Throw.If(blockIndex < 0 || blockIndex >= count, "invalid block index");
 
             var hash = archive.MerkleTree.GetHash(blockIndex);
             return _archiveContents.Get(hash);
@@ -1722,7 +1730,7 @@ namespace Phantasma.Blockchain
 
         public bool PlatformExists(string name)
         {
-            if (name == Nexus.PlatformName)
+            if (name == DomainSettings.PlatformName)
             {
                 return true;
             }

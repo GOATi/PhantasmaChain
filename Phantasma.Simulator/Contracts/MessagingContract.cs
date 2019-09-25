@@ -2,7 +2,7 @@
 using Phantasma.Cryptography;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Simulator.Contracts
 {
     public struct AddressMessage
     {

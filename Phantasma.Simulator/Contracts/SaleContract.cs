@@ -1,4 +1,4 @@
-﻿namespace Phantasma.Blockchain.Contracts.Native
+﻿namespace Phantasma.Simulator.Contracts
 {
     public sealed class SaleContract : SmartContract
     {

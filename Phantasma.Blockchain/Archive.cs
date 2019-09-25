@@ -1,54 +1,27 @@
 ﻿using Phantasma.Cryptography;
+using Phantasma.Domain;
+using Phantasma.Numerics;
 using Phantasma.Storage;
 using Phantasma.Storage.Utils;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using Phantasma.Numerics;
 
 namespace Phantasma.Blockchain
 {
-    [Flags]
-    public enum ArchiveFlags
+    public class Archive : IArchive, ISerializable
     {
-        None = 0x0,
-        Compressed = 0x1,
-        Encrypted = 0x2,
-    }
-
-    // TODO support this
-    public struct ArchiveMetadata
-    {
-        public readonly string Key;
-        public readonly string Value;
-
-        public ArchiveMetadata(string key, string value)
-        {
-            Key = key;
-            Value = value;
-        }
-    }
-
-    public class Archive: ISerializable
-    {
-        public static readonly int MinSize = 1024; //1kb
-        public static readonly int MaxSize = 104857600; //100mb
-        public static readonly uint BlockSize = MerkleTree.ChunkSize;
-
+        public ArchiveFlags Flags { get; private set; }
         public Hash Hash => MerkleTree.Root;
-
         public MerkleTree MerkleTree { get; private set; }
         public BigInteger Size { get; private set; }
-        public ArchiveFlags Flags { get; private set; }
         public byte[] Key { get; private set; }
-
-        public BigInteger BlockCount => Size / BlockSize;
 
         public IEnumerable<Hash> Blocks
         {
             get
             {
-                for (int i=0; i<BlockCount; i++)
+                var count = this.GetBlockCount();
+                for (int i = 0; i < count; i++)
                 {
                     yield return MerkleTree.GetHash(i);
                 }
@@ -82,7 +55,7 @@ namespace Phantasma.Blockchain
         {
             MerkleTree = MerkleTree.Unserialize(reader);
             Size = reader.ReadInt64();
-            Flags = (ArchiveFlags) reader.ReadByte();
+            Flags = (ArchiveFlags)reader.ReadByte();
 
             Key = reader.ReadByteArray();
             Key = Key ?? new byte[0];

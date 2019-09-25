@@ -1,10 +1,9 @@
 using System;
+using System.Linq;
 using Phantasma.Storage.Context;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
-using Phantasma.Blockchain.Tokens;
-using System.Linq;
 using Phantasma.Domain;
 
 namespace Phantasma.Contracts
@@ -34,9 +33,9 @@ namespace Phantasma.Contracts
         public Timestamp claimDate;
     }
 
-    public sealed class StakeContract : SmartContract
+    public sealed class StakeContract : NativeContract
     {
-        public override string Name => Nexus.StakeContractName;
+        public override NativeContractKind Kind => NativeContractKind.Stake;
 
         private StorageMap _stakes; // <Address, EnergyAction>
         private StorageMap _proxyStakersMap; // <Address, List<EnergyProxy>>
@@ -50,11 +49,11 @@ namespace Phantasma.Contracts
 
         private Timestamp genesisTimestamp = 0;
 
-        public static readonly BigInteger DefaultMasterThreshold = UnitConversion.ToBigInteger(50000, Nexus.StakingTokenDecimals);
-        public readonly static BigInteger MasterClaimGlobalAmount = UnitConversion.ToBigInteger(125000, Nexus.StakingTokenDecimals);
+        public static readonly BigInteger DefaultMasterThreshold = UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals);
+        public readonly static BigInteger MasterClaimGlobalAmount = UnitConversion.ToBigInteger(125000, DomainSettings.StakingTokenDecimals);
 
         public readonly static BigInteger BaseEnergyRatioDivisor = 500; // used as 1/500, will generate 0.002 per staked token
-        public static BigInteger MinimumValidStake => UnitConversion.GetUnitValue(Nexus.StakingTokenDecimals);
+        public static BigInteger MinimumValidStake => UnitConversion.GetUnitValue(DomainSettings.StakingTokenDecimals);
 
         public const string MasterStakeThresholdTag = "stake.master.threshold";
         public const string VotingStakeThresholdTag = "stake.vote.threshold";
@@ -131,11 +130,13 @@ namespace Phantasma.Contracts
 
         public Timestamp GetMasterClaimDateFromReference(BigInteger claimDistance, Timestamp referenceTime)
         {
+            Runtime.Expect(Runtime.Chain.IsRoot, "must be root chain");
+
             DateTime referenceDate;
             if (referenceTime.Value != 0)
                 referenceDate = referenceTime;
             else if (_lastMasterClaim.Value == 0)
-                referenceDate = Runtime.Nexus.RootChain.FindBlockByHeight(1).Timestamp;
+                referenceDate = Runtime.GetBlockByHeight(1).Timestamp;
             else
                 referenceDate = _lastMasterClaim;
 
@@ -222,11 +223,11 @@ namespace Phantasma.Contracts
             var thisClaimDate = GetMaster(from).claimDate;
             Runtime.Expect(Runtime.Time >= thisClaimDate, "not enough time waited");
 
-            var symbol = Nexus.StakingTokenSymbol;
-            var token = Runtime.Nexus.GetTokenInfo(symbol);
+            var symbol = DomainSettings.StakingTokenSymbol;
+            var token = Runtime.GetToken(symbol);
 
             var totalAmount = MasterClaimGlobalAmount;
-            Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, token.Symbol, Runtime.Chain.Address, totalAmount, false), "mint failed");
+            Runtime.Expect(Runtime.MintTokens(token.Symbol, this.Address, totalAmount, false), "mint failed");
 
             var listSize = _mastersList.Count();
 
@@ -248,11 +249,11 @@ namespace Phantasma.Contracts
                     transferAmount += leftovers;
                 }
 
-                Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, token.Symbol, Runtime.Chain.Address, targetMaster.address, transferAmount), "transfer failed");
+                Runtime.Expect(Runtime.TransferTokens(token.Symbol, this.Address, targetMaster.address, transferAmount), "transfer failed");
 
                 totalAmount -= transferAmount;
 
-                Runtime.Notify(EventKind.TokenMint, targetMaster.address, new TokenEventData() { symbol = token.Symbol, value = transferAmount, chainAddress = Runtime.Chain.Address });
+                Runtime.Notify(EventKind.TokenMint, targetMaster.address, new TokenEventData() { symbol = token.Symbol, value = transferAmount, chainAddress = this.Address });
 
                 var nextClaim = GetMasterClaimDateFromReference(1, thisClaimDate);
 
@@ -269,8 +270,7 @@ namespace Phantasma.Contracts
             Runtime.Expect(stakeAmount >= MinimumValidStake, "invalid amount");
             Runtime.Expect(IsWitness(from), "witness failed");
 
-            var stakeBalances = new BalanceSheet(Nexus.StakingTokenSymbol);
-            var balance = stakeBalances.Get(this.Storage, from);
+            var balance = Runtime.GetBalance(DomainSettings.StakingTokenSymbol, from);
 
             var currentStake = _stakes.Get<Address, EnergyAction>(from);
 
@@ -278,8 +278,7 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(balance >= stakeAmount, "not enough balance");
 
-            Runtime.Expect(stakeBalances.Subtract(this.Storage, from, stakeAmount), "balance subtract failed");
-            Runtime.Expect(stakeBalances.Add(this.Storage, Runtime.Chain.Address, stakeAmount), "balance add failed");
+            Runtime.Expect(Runtime.TransferTokens(DomainSettings.StakingTokenSymbol, from, this.Address, stakeAmount), "stake transfer failed");
 
             var entry = new EnergyAction()
             {
@@ -308,7 +307,7 @@ namespace Phantasma.Contracts
                 Runtime.Notify(EventKind.RolePromote, from, new RoleEventData() { role = "master", date = nextClaim });
             }
 
-            Runtime.Notify(EventKind.TokenStake, from, new TokenEventData() { chainAddress = Runtime.Chain.Address, symbol = Nexus.StakingTokenSymbol, value = stakeAmount });
+            Runtime.Notify(EventKind.TokenStake, from, new TokenEventData() { chainAddress = this.Address, symbol = DomainSettings.StakingTokenSymbol, value = stakeAmount });
         }
 
         public BigInteger Unstake(Address from, BigInteger unstakeAmount)
@@ -335,9 +334,8 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(days >= 1, "waiting period required");
 
-            var token = Runtime.Nexus.GetTokenInfo(Nexus.StakingTokenSymbol);
-            var balances = new BalanceSheet(token.Symbol);
-            var balance = balances.Get(this.Storage, Runtime.Chain.Address);
+            var token = Runtime.GetToken(DomainSettings.StakingTokenSymbol);
+            var balance = Runtime.GetBalance(token.Symbol, this.Address);
             Runtime.Expect(balance >= unstakeAmount, "not enough balance");
 
             var availableStake = stake.totalAmount;
@@ -348,8 +346,7 @@ namespace Phantasma.Contracts
             if (availableStake - unstakeAmount > 0)
                 Runtime.Expect(availableStake - unstakeAmount >= MinimumValidStake, "leftover stake would be below minimum staking amount");
 
-            Runtime.Expect(balances.Subtract(this.Storage, Runtime.Chain.Address, unstakeAmount), "balance subtract failed");
-            Runtime.Expect(balances.Add(this.Storage, from, unstakeAmount), "balance add failed");
+            Runtime.Expect(Runtime.TransferTokens(DomainSettings.StakingTokenSymbol, this.Address, from, unstakeAmount), "nstake transfer failed");
 
             stake.totalAmount -= unstakeAmount;
 
@@ -399,7 +396,7 @@ namespace Phantasma.Contracts
                 }
             }
 
-            Runtime.Notify(EventKind.TokenUnstake, from, new TokenEventData() { chainAddress = Runtime.Chain.Address, symbol = token.Symbol, value = unstakeAmount });
+            Runtime.Notify(EventKind.TokenUnstake, from, new TokenEventData() { chainAddress = this.Address, symbol = token.Symbol, value = unstakeAmount });
 
             return unstakeAmount;
         }
@@ -533,13 +530,13 @@ namespace Phantasma.Contracts
                 if (proxyAmount > 0)
                 {
                     Runtime.Expect(availableAmount >= proxyAmount, "unsuficient amount for proxy distribution");
-                    Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, Nexus.FuelTokenSymbol, proxy.address, proxyAmount, false), "proxy fuel minting failed");
+                    Runtime.Expect(Runtime.MintTokens(DomainSettings.FuelTokenSymbol, proxy.address, proxyAmount, false), "proxy fuel minting failed");
                     availableAmount -= proxyAmount;
                 }
             }
 
             Runtime.Expect(availableAmount >= 0, "unsuficient leftovers");
-            Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, Nexus.FuelTokenSymbol, stakeAddress, availableAmount, false), "fuel minting failed");
+            Runtime.Expect(Runtime.MintTokens(DomainSettings.FuelTokenSymbol, stakeAddress, availableAmount, false), "fuel minting failed");
 
             // NOTE here we set the full staked amount instead of claimed amount, to avoid infinite claims loophole
             var stake = _stakes.Get<Address, EnergyAction>(stakeAddress);
@@ -556,8 +553,8 @@ namespace Phantasma.Contracts
 
             _claims.Set<Address, EnergyAction>(stakeAddress, action);
 
-            Runtime.Notify(EventKind.TokenClaim, from, new TokenEventData() { chainAddress = Runtime.Chain.Address, symbol = Nexus.StakingTokenSymbol, value = unclaimedAmount });
-            Runtime.Notify(EventKind.TokenMint, stakeAddress, new TokenEventData() { chainAddress = Runtime.Chain.Address, symbol = Nexus.FuelTokenSymbol, value = fuelAmount });
+            Runtime.Notify(EventKind.TokenClaim, from, new TokenEventData() { chainAddress = this.Address, symbol = DomainSettings.StakingTokenSymbol, value = unclaimedAmount });
+            Runtime.Notify(EventKind.TokenMint, stakeAddress, new TokenEventData() { chainAddress = this.Address, symbol = DomainSettings.FuelTokenSymbol, value = fuelAmount });
         }
 
         public BigInteger GetStake(Address address)
@@ -575,7 +572,7 @@ namespace Phantasma.Contracts
         public BigInteger GetStorageStake(Address address)
         {
             var usedStorageSize = Runtime.CallContext("storage", "GetUsedSpace", address).AsNumber();
-            var usedStake = usedStorageSize * UnitConversion.ToBigInteger(1, Nexus.StakingTokenDecimals);
+            var usedStake = usedStorageSize * UnitConversion.ToBigInteger(1, DomainSettings.StakingTokenDecimals);
             usedStake = usedStake / (StorageContract.KilobytesPerStake * 1024);
 
             return usedStake;
@@ -692,12 +689,12 @@ namespace Phantasma.Contracts
 
         public static BigInteger FuelToStake(BigInteger fuelAmount)
         {
-            return UnitConversion.ConvertDecimals(fuelAmount * BaseEnergyRatioDivisor, Nexus.FuelTokenDecimals, Nexus.StakingTokenDecimals);
+            return UnitConversion.ConvertDecimals(fuelAmount * BaseEnergyRatioDivisor, DomainSettings.FuelTokenDecimals, DomainSettings.StakingTokenDecimals);
         }
 
         public static BigInteger StakeToFuel(BigInteger stakeAmount)
         {
-            return UnitConversion.ConvertDecimals(stakeAmount, Nexus.StakingTokenDecimals, Nexus.FuelTokenDecimals) / BaseEnergyRatioDivisor;
+            return UnitConversion.ConvertDecimals(stakeAmount, DomainSettings.StakingTokenDecimals, DomainSettings.FuelTokenDecimals) / BaseEnergyRatioDivisor;
         }
 
         public BigInteger GetAddressVotingPower(Address address)
@@ -745,9 +742,11 @@ namespace Phantasma.Contracts
 
         private BigInteger CalculateRewardsWithHalving(BigInteger totalStake, BigInteger unclaimedPartials, Timestamp startTime, Timestamp endTime)
         {
+            Runtime.Expect(Runtime.Chain.IsRoot, "must be root chain");
+
             if (genesisTimestamp == 0)
             {
-                var genesisBlock = Runtime.Nexus.RootChain.FindBlockByHeight(1);
+                var genesisBlock = Runtime.GetBlockByHeight(1);
                 if (genesisBlock == null)   //special case for genesis block's creation
                     return StakeToFuel(totalStake);
 

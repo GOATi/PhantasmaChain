@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using Phantasma.VM;
 using Phantasma.Cryptography;
-using Phantasma.Core;
 using Phantasma.Numerics;
-using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Core.Types;
 using Phantasma.Storage.Context;
 using Phantasma.Storage;
@@ -87,6 +85,14 @@ namespace Phantasma.Blockchain.Contracts
         }
 
         public bool IsTrigger => DelayPayment;
+
+        INexus IRuntime.Nexus => throw new NotImplementedException();
+
+        IChain IRuntime.Chain => throw new NotImplementedException();
+
+        ITransaction IRuntime.Transaction => throw new NotImplementedException();
+
+        public StorageContext Storage => throw new NotImplementedException();
 
         public override string ToString()
         {
@@ -415,7 +421,7 @@ namespace Phantasma.Blockchain.Contracts
         public static readonly uint RND_M = 2147483647;
 
         // returns a next random number
-        public BigInteger GetRandomNumber()
+        public BigInteger GenerateRandomNumber()
         {
             if (!randomized)
             {
@@ -531,6 +537,272 @@ namespace Phantasma.Blockchain.Contracts
         }
 
         public BigInteger GetBalance(IChain chain, IToken token, Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IBlock GetBlockByHash(Hash hash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IBlock GetBlockByHeight(BigInteger height)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IContract GetContract(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TokenExists(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool FeedExists(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool PlatformExists(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ContractExists(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ContractDeployed(IChain chain, string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ArchiveExists(Hash hash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IArchive GetArchive(Hash hash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DeleteArchive(Hash hash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetIndexOfChain(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool HasAddressScript(Address from)
+        {
+            throw new NotImplementedException();
+        }
+
+        IEvent[] IRuntime.GetTransactionEvents(ITransaction transaction)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Address GetValidatorForBlock(IChain chain, Hash hash)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValidatorEntry GetValidatorByIndex(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsPrimaryValidator(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsSecondaryValidator(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetPrimaryValidatorCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetSecondaryValidatorCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsKnownValidator(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsStakeMaster(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public BigInteger GetStake(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public BigInteger GenerateUID()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool InvokeTrigger(byte[] script, string triggerName, params object[] args)
+        {
+            if (script == null || script.Length == 0)
+            {
+                return true;
+            }
+
+            var leftOverGas = (uint)(this.MaxGas - this.UsedGas);
+            var runtime = new RuntimeVM(script, this.Chain, this.Time, this.Transaction, this.ChangeSet, this.Oracle, false, true);
+            runtime.ThrowOnFault = true;
+
+            for (int i = args.Length - 1; i >= 0; i--)
+            {
+                var obj = VMObject.FromObject(args[i]);
+                runtime.Stack.Push(obj);
+            }
+            runtime.Stack.Push(VMObject.FromObject(triggerName));
+
+            var state = runtime.Execute();
+            // TODO catch VM exceptions?
+
+            // propagate gas consumption
+            // TODO this should happen not here but in real time during previous execution, to prevent gas attacks
+            this.ConsumeGas(runtime.UsedGas);
+
+            if (state == ExecutionState.Halt)
+            {
+                // propagate events to the other runtime
+                foreach (var evt in runtime.Events)
+                {
+                    this.Notify(evt.Kind, evt.Address, evt.Data);
+                }
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public bool IsWitness(Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public BigInteger[] GetOwnerships(string symbol, Address address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public BigInteger GetTokenSupply(string symbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool CreateToken(string symbol, string name, string platform, Hash hash, BigInteger maxSupply, int decimals, TokenFlags flags, byte[] script)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool CreateChain(Address owner, string name, string parentChain, string[] contractNames)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool CreateFeed(Address owner, string name, FeedMode mode)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool CreatePlatform(Address address, string name, string fuelSymbol)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool MintTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool MintToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool BurnToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TransferToken(string symbol, Address source, Address destination, BigInteger tokenID)
+        {
+            throw new NotImplementedException();
+        }
+
+        public BigInteger CreateNFT(string tokenSymbol, Address chainAddress, byte[] rom, byte[] ram)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DestroyNFT(string tokenSymbol, BigInteger tokenID)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool EditNFTContent(string tokenSymbol, BigInteger tokenID, byte[] ram)
+        {
+            throw new NotImplementedException();
+        }
+
+        public TokenContent GetNFT(string tokenSymbol, BigInteger tokenID)
+        {
+            throw new NotImplementedException();
+        }
+
+        public byte[] ReadOracle(string URL)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Address LookUpName(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public byte[] GetAddressScript(Address from)
         {
             throw new NotImplementedException();
         }

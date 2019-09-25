@@ -12,9 +12,9 @@ using Phantasma.Core.Types;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.Cryptography;
 using Phantasma.Blockchain.Tokens;
-using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Storage.Context;
 using Phantasma.Domain;
+using Phantasma.Contracts;
 
 namespace Phantasma.Blockchain
 {
@@ -49,7 +49,8 @@ namespace Phantasma.Blockchain
 
         public uint TransactionCount => (uint)_transactions.Count;
 
-        public bool IsRoot => this.Name == Nexus.RootChainName;
+        public bool IsRoot => this.Address == Nexus.RootChainAddress;
+
         #endregion
 
         public Chain(Nexus nexus, string name, Logger log = null)
@@ -93,8 +94,9 @@ namespace Phantasma.Blockchain
         internal void DeployContracts(HashSet<string> contractNames)
         {
             Throw.If(contractNames == null || !contractNames.Any(), "contracts required");
-            Throw.If(!contractNames.Contains(Nexus.GasContractName), "gas contract required");
-            Throw.If(!contractNames.Contains(Nexus.TokenContractName), "token contract required");
+            Throw.If(!contractNames.Contains(NativeContractKind.Gas.GetName()), "gas contract required");
+            Throw.If(!contractNames.Contains(NativeContractKind.Token.GetName()), "token contract required");
+            Throw.If(!contractNames.Contains(NativeContractKind.Block.GetName()), "block contract required");
 
             foreach (var contractName in contractNames)
             {

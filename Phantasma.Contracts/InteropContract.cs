@@ -1,12 +1,11 @@
-﻿using Phantasma.Blockchain.Tokens;
+﻿using System;
+using System.Linq;
 using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Numerics;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
-using System;
-using System.Linq;
 
 namespace Phantasma.Contracts
 {
@@ -31,9 +30,9 @@ namespace Phantasma.Contracts
         public Timestamp timestamp;
     }
 
-    public sealed class InteropContract : SmartContract
+    public sealed class InteropContract : NativeContract
     {
-        public override string Name => Nexus.InteropContractName;
+        public override NativeContractKind Kind => NativeContractKind.Interop;
 
         private StorageList _platforms;
 
@@ -54,12 +53,12 @@ namespace Phantasma.Contracts
             Runtime.Expect(IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "source address must be user address");
             Runtime.Expect(target.IsInterop, "target address must be interop address");
-            Runtime.Expect(!Runtime.Nexus.IsKnownValidator(from), "source address cant be chain validator");
+            Runtime.Expect(!Runtime.IsKnownValidator(from), "source address cant be chain validator");
 
             string platformName;
             byte[] data;
             target.DecodeInterop(out platformName, out data, 0);
-            Runtime.Expect(Runtime.Nexus.PlatformExists(platformName), "unsupported chain");
+            Runtime.Expect(Runtime.PlatformExists(platformName), "unsupported chain");
 
             var list = _links.Get<Address, StorageList>(from);
 
@@ -105,7 +104,7 @@ namespace Phantasma.Contracts
 
         public Address GetLink(Address from, string platformName)
         {
-            if (Nexus.PlatformName.Equals(platformName, StringComparison.OrdinalIgnoreCase))
+            if (DomainSettings.PlatformName.Equals(platformName, StringComparison.OrdinalIgnoreCase))
             {
                 Runtime.Expect(from.IsInterop, "must be interop address");
                 if (_reverseMap.ContainsKey<Address>(from))
@@ -117,7 +116,7 @@ namespace Phantasma.Contracts
             }
 
             Runtime.Expect(from.IsUser, "must be user address");
-            Runtime.Expect(Runtime.Nexus.PlatformExists(platformName), "unsupported chain");
+            Runtime.Expect(Runtime.PlatformExists(platformName), "unsupported chain");
 
             var list = _links.Get<Address, StorageList>(from);
             var count = list.Count();
@@ -141,9 +140,9 @@ namespace Phantasma.Contracts
 
         public void SettleTransaction(Address from, string platform, Hash hash)
         {
-            Runtime.Expect(platform != Nexus.PlatformName, "must be external platform");
-            Runtime.Expect(Runtime.Nexus.PlatformExists(platform), "unsupported platform");
-            var platformInfo = Runtime.Nexus.GetPlatformInfo(platform);
+            Runtime.Expect(platform != DomainSettings.PlatformName, "must be external platform");
+            Runtime.Expect(Runtime.PlatformExists(platform), "unsupported platform");
+            var platformInfo = Runtime.GetPlatform(platform);
 
             Runtime.Expect(IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "must be user address");
@@ -151,8 +150,7 @@ namespace Phantasma.Contracts
             var chainHashes = _hashes.Get<string, StorageSet>(platform);
             Runtime.Expect(!chainHashes.Contains<Hash>(hash), "hash already seen");
 
-            var interopBytes = Runtime.Oracle.Read($"interop://{platform}/tx/{hash}");
-            var interopTx = Serialization.Unserialize<InteropTransaction>(interopBytes);
+            var interopTx = Runtime.ReadTransactionFromOracle(platform, DomainSettings.RootChainName, hash);
 
             Runtime.Expect(interopTx.Platform == platform, "unxpected platform name");
             Runtime.Expect(interopTx.Hash == hash, "unxpected hash");
@@ -168,8 +166,8 @@ namespace Phantasma.Contracts
                     var transfer = evt.GetContent<TokenEventData>();
                     Runtime.Expect(transfer.value > 0, "amount must be positive and greater than zero");
 
-                    Runtime.Expect(Runtime.Nexus.TokenExists(transfer.symbol), "invalid token");
-                    var token = this.Runtime.Nexus.GetTokenInfo(transfer.symbol);
+                    Runtime.Expect(Runtime.TokenExists(transfer.symbol), "invalid token");
+                    var token = this.Runtime.GetToken(transfer.symbol);
 
                     Runtime.Expect(token.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
                     Runtime.Expect(token.Flags.HasFlag(TokenFlags.Transferable), "token must be transferable");
@@ -191,14 +189,14 @@ namespace Phantasma.Contracts
 
                     if (destination.IsInterop)
                     {
-                        destination = GetLink(destination, Nexus.PlatformName);
+                        destination = GetLink(destination, DomainSettings.PlatformName);
                     }
                     else
                     {
                         Runtime.Expect(destination.IsUser, "invalid destination address");
                     }
 
-                    Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, transfer.symbol, destination, transfer.value, true), "mint failed");
+                    Runtime.Expect(Runtime.MintTokens(transfer.symbol, destination, transfer.value, true), "mint failed");
                     Runtime.Notify(EventKind.TokenReceive, destination, new TokenEventData() { chainAddress = platformInfo.Address, value = transfer.value, symbol = transfer.symbol });
 
                     swapCount++;
@@ -213,8 +211,8 @@ namespace Phantasma.Contracts
                     var transfer = evt.GetContent<TokenEventData>();
                     Runtime.Expect(transfer.value > 0, "amount must be positive and greater than zero");
 
-                    Runtime.Expect(Runtime.Nexus.TokenExists(transfer.symbol), "invalid token");
-                    var token = this.Runtime.Nexus.GetTokenInfo(transfer.symbol);
+                    Runtime.Expect(Runtime.TokenExists(transfer.symbol), "invalid token");
+                    var token = this.Runtime.GetToken(transfer.symbol);
                     Runtime.Expect(token.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
                     Runtime.Expect(token.Flags.HasFlag(TokenFlags.Transferable), "token must be transferable");
                     Runtime.Expect(token.Flags.HasFlag(TokenFlags.External), "token must be external");
@@ -238,7 +236,7 @@ namespace Phantasma.Contracts
 
                     _withdraws.RemoveAt<InteropWithdraw>(index);
 
-                    Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, withdraw.feeSymbol, this.Address, from, withdraw.feeAmount), "fee payment failed");
+                    Runtime.Expect(Runtime.TransferTokens(withdraw.feeSymbol, this.Address, from, withdraw.feeAmount), "fee payment failed");
 
                     Runtime.Notify(EventKind.TokenReceive, from, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = withdraw.feeAmount, symbol = withdraw.feeSymbol });
                     Runtime.Notify(EventKind.TokenReceive, destination, new TokenEventData() { chainAddress = platformInfo.Address, value = withdraw.transferAmount, symbol = withdraw.transferSymbol});
@@ -261,9 +259,9 @@ namespace Phantasma.Contracts
             Runtime.Expect(from.IsUser, "source must be user address");
             Runtime.Expect(to.IsInterop, "destination must be interop address");
 
-            Runtime.Expect(Runtime.Nexus.TokenExists(symbol), "invalid token");
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
 
-            var transferTokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            var transferTokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(transferTokenInfo.Flags.HasFlag(TokenFlags.Transferable), "transfer token must be transferable");
             Runtime.Expect(transferTokenInfo.Flags.HasFlag(TokenFlags.External), "transfer token must be external");
             Runtime.Expect(transferTokenInfo.Flags.HasFlag(TokenFlags.Fungible), "transfer token must be fungible");
@@ -271,27 +269,27 @@ namespace Phantasma.Contracts
             string platform;
             byte[] dummy;
             to.DecodeInterop(out platform, out dummy, 0);
-            Runtime.Expect(platform != Nexus.PlatformName, "must be external platform");
-            Runtime.Expect(Runtime.Nexus.PlatformExists(platform), "invalid platform");
-            var platformInfo = Runtime.Nexus.GetPlatformInfo(platform);
+            Runtime.Expect(platform != DomainSettings.PlatformName, "must be external platform");
+            Runtime.Expect(Runtime.PlatformExists(platform), "invalid platform");
+            var platformInfo = Runtime.GetPlatform(platform);
             Runtime.Expect(to != platformInfo.Address, "invalid target address");
 
             var feeSymbol = platformInfo.Symbol;
-            Runtime.Expect(Runtime.Nexus.TokenExists(feeSymbol), "invalid fee token");
+            Runtime.Expect(Runtime.TokenExists(feeSymbol), "invalid fee token");
 
-            var feeTokenInfo = this.Runtime.Nexus.GetTokenInfo(feeSymbol);
+            var feeTokenInfo = this.Runtime.GetToken(feeSymbol);
             Runtime.Expect(feeTokenInfo.Flags.HasFlag(TokenFlags.Fungible), "fee token must be fungible");
             Runtime.Expect(feeTokenInfo.Flags.HasFlag(TokenFlags.Transferable), "fee token must be transferable");
 
-            var basePrice = UnitConversion.GetUnitValue(Nexus.FiatTokenDecimals) / InteropFeeRacio; // 50cents
-            var feeAmount = Runtime.GetTokenQuote(Nexus.FiatTokenSymbol, feeSymbol, basePrice);
+            var basePrice = UnitConversion.GetUnitValue(DomainSettings.FiatTokenDecimals) / InteropFeeRacio; // 50cents
+            var feeAmount = Runtime.GetTokenQuote(DomainSettings.FiatTokenSymbol, feeSymbol, basePrice);
             Runtime.Expect(feeAmount > 0, "fee is too small");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, feeSymbol, from, this.Address, feeAmount), "fee transfer failed");
+            Runtime.Expect(Runtime.TransferTokens(feeSymbol, from, this.Address, feeAmount), "fee transfer failed");
 
-            Runtime.Expect(Runtime.Nexus.BurnTokens(Runtime, symbol, from, amount, true), "burn failed");
+            Runtime.Expect(Runtime.BurnTokens(symbol, from, amount, true), "burn failed");
 
-            var collateralAmount = Runtime.GetTokenQuote(Nexus.FiatTokenSymbol, Nexus.FuelTokenSymbol, basePrice);
+            var collateralAmount = Runtime.GetTokenQuote(DomainSettings.FiatTokenSymbol, DomainSettings.FuelTokenSymbol, basePrice);
 
             var withdraw = new InteropWithdraw()
             {
@@ -315,7 +313,7 @@ namespace Phantasma.Contracts
         public void SetBroker(Address from, Hash hash)
         {
             Runtime.Expect(IsWitness(from), "invalid witness");
-            Runtime.Expect(Runtime.Nexus.IsKnownValidator(from), "invalid validator");
+            Runtime.Expect(Runtime.IsKnownValidator(from), "invalid validator");
 
             var count = _withdraws.Count();
             var index = -1;
@@ -334,7 +332,7 @@ namespace Phantasma.Contracts
             var withdraw = _withdraws.Get<InteropWithdraw>(index);
             Runtime.Expect(withdraw.broker.IsNull, "broker already set");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, Nexus.FuelTokenSymbol, from, this.Address, withdraw.collateralAmount), "collateral payment failed");
+            Runtime.Expect(Runtime.TransferTokens(DomainSettings.FuelTokenSymbol, from, this.Address, withdraw.collateralAmount), "collateral payment failed");
             Runtime.Notify(EventKind.TokenEscrow, from, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = withdraw.feeAmount, symbol = withdraw.feeSymbol });
 
             withdraw.broker = from;
@@ -374,7 +372,7 @@ namespace Phantasma.Contracts
             var days = diff / 86400; // convert seconds to days
             Runtime.Expect(days >= 1, "still waiting for broker");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, Nexus.FuelTokenSymbol, this.Address, from, withdraw.collateralAmount), "fee payment failed");
+            Runtime.Expect(Runtime.TransferTokens(DomainSettings.FuelTokenSymbol, this.Address, from, withdraw.collateralAmount), "fee payment failed");
 
             withdraw.broker = Address.Null;
             withdraw.timestamp = Runtime.Time;

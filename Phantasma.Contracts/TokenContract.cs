@@ -1,5 +1,4 @@
-﻿using Phantasma.Blockchain.Tokens;
-using Phantasma.Cryptography;
+﻿using Phantasma.Cryptography;
 using Phantasma.Storage;
 using Phantasma.Numerics;
 using System.Linq;
@@ -8,18 +7,9 @@ using Phantasma.Domain;
 
 namespace Phantasma.Contracts
 {
-    public enum TokenTrigger
+    public sealed class TokenContract : NativeContract
     {
-        OnMint, // address, symbol, amount
-        OnBurn, // address, symbol, amount
-        OnSend, // address, symbol, amount
-        OnReceive, // address, symbol, amount
-        OnMetadata // address, symbol, key, value
-    }
-
-    public sealed class TokenContract : SmartContract
-    {
-        public override string Name => Nexus.TokenContractName;
+        public override NativeContractKind Kind => NativeContractKind.Token;
 
         public static readonly string TriggerMint = "OnMint";
         public static readonly string TriggerBurn = "OnBurn";
@@ -38,13 +28,13 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
 
-            var targetChain = this.Runtime.Nexus.FindChainByAddress(targetChainAddress);
+            var targetChain = this.Runtime.GetChainByAddress(targetChainAddress);
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "must be fungible token");
 
-            if (tokenInfo.IsCapped())
+            /*if (tokenInfo.IsCapped())
             {
                 var sourceSupplies = new SupplySheet(symbol, this.Runtime.Chain, Runtime.Nexus);
                 var targetSupplies = new SupplySheet(symbol, targetChain, Runtime.Nexus);
@@ -57,9 +47,9 @@ namespace Phantasma.Contracts
                 {
                     Runtime.Expect(sourceSupplies.MoveToChild(this.Storage, targetChain.Name, amount), "source supply check failed");
                 }
-            }
+            }*/
 
-            Runtime.Expect(Runtime.Nexus.BurnTokens(Runtime, symbol, from, amount, true), "burn failed");
+            Runtime.Expect(Runtime.BurnTokens(symbol, from, amount, true), "burn failed");
 
             Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = amount, chainAddress = Runtime.Chain.Address });
             Runtime.Notify(EventKind.TokenEscrow, to, new TokenEventData() { symbol = symbol, value = amount, chainAddress = targetChainAddress });
@@ -71,14 +61,14 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
             Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fiat), "token can't be fiat");
 
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
 
-            Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, symbol, to, amount, false), "minting failed");
+            Runtime.Expect(Runtime.MintTokens(symbol, to, amount, false), "minting failed");
 
             Runtime.Notify(EventKind.TokenMint, to, new TokenEventData() { symbol = symbol, value = amount, chainAddress = this.Runtime.Chain.Address });
         }
@@ -88,13 +78,13 @@ namespace Phantasma.Contracts
             Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
             Runtime.Expect(IsWitness(from), "invalid witness");
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
             Runtime.Expect(tokenInfo.IsBurnable(), "token must be burnable");
             Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fiat), "token can't be fiat");
 
-            Runtime.Expect(this.Runtime.Nexus.BurnTokens(Runtime, symbol, from, amount, false), "burning failed");
+            Runtime.Expect(this.Runtime.BurnTokens(symbol, from, amount, false), "burning failed");
 
             Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = amount });
         }
@@ -113,12 +103,12 @@ namespace Phantasma.Contracts
                 return;
             }
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
             Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Transferable), "token must be transferable");
 
-            Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, symbol, source, destination, amount), "transfer failed");
+            Runtime.Expect(Runtime.TransferTokens(symbol, source, destination, amount), "transfer failed");
 
             Runtime.Notify(EventKind.TokenSend, source, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = amount, symbol = symbol });
             Runtime.Notify(EventKind.TokenReceive, destination, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = amount, symbol = symbol });
@@ -126,49 +116,48 @@ namespace Phantasma.Contracts
 
         public BigInteger GetBalance(Address address, string symbol)
         {
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var token = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var token = this.Runtime.GetToken(symbol);
             Runtime.Expect(token.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
 
-            var balances = new BalanceSheet(symbol);
-            return balances.Get(this.Storage, address);
+            return Runtime.GetBalance(symbol, address);
         }
         #endregion
 
         #region NON FUNGIBLE TOKENS
         public BigInteger[] GetTokens(Address address, string symbol)
         {
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var token = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var token = this.Runtime.GetToken(symbol);
             Runtime.Expect(!token.IsFungible(), "token must be non-fungible");
 
-            var ownerships = new OwnershipSheet(symbol);
-            return ownerships.Get(this.Storage, address).ToArray();
+            var ownerships = Runtime.GetOwnerships(symbol, address);
+            return ownerships;
         }
 
         // TODO minting a NFT will require a certain amount of KCAL that is released upon burning
         public BigInteger MintToken(Address from, Address to, string symbol, byte[] rom, byte[] ram, BigInteger value)
         {
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(!tokenInfo.IsFungible(), "token must be non-fungible");
             Runtime.Expect(IsWitness(from), "invalid witness");
 
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
-            Runtime.Expect(Runtime.Chain.Name == Nexus.RootChainName, "can only mint nft in root chain");
+            Runtime.Expect(Runtime.IsRootChain(), "can only mint nft in root chain");
 
             Runtime.Expect(rom.Length <= TokenContent.MaxROMSize, "ROM size exceeds maximum allowed");
             Runtime.Expect(ram.Length <= TokenContent.MaxRAMSize, "RAM size exceeds maximum allowed");
 
-            var tokenID = this.Runtime.Nexus.CreateNFT(symbol, Runtime.Chain.Address, rom, ram);
+            var tokenID = this.Runtime.CreateNFT(symbol, Runtime.Chain.Address, rom, ram);
             Runtime.Expect(tokenID > 0, "invalid tokenID");
 
-            Runtime.Expect(Runtime.Nexus.MintToken(Runtime, symbol, to, tokenID, false), "minting failed");
+            Runtime.Expect(Runtime.MintToken(symbol, to, tokenID, false), "minting failed");
 
             if (tokenInfo.IsBurnable())
             {
                 Runtime.Expect(value > 0, "token must have value");
-                Runtime.Expect(Runtime.Nexus.TransferTokens(Runtime, Nexus.FuelTokenSymbol, from, Runtime.Chain.Address, tokenID), "minting escrow failed");
+                Runtime.Expect(Runtime.TransferTokens(DomainSettings.FuelTokenSymbol, from, Runtime.Chain.Address, tokenID), "minting escrow failed");
                 Runtime.Notify(EventKind.TokenEscrow, to, new TokenEventData() { symbol = symbol, value = value, chainAddress = Runtime.Chain.Address });
             }
             else
@@ -184,14 +173,14 @@ namespace Phantasma.Contracts
         {
             Runtime.Expect(IsWitness(from), "invalid witness");
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(!tokenInfo.IsFungible(), "token must be non-fungible");
             Runtime.Expect(tokenInfo.IsBurnable(), "token must be burnable");
 
-            var nft = Runtime.Nexus.GetNFT(symbol, tokenID);
+            var nft = Runtime.GetNFT(symbol, tokenID);
 
-            Runtime.Expect(Runtime.Nexus.BurnToken(Runtime, symbol, from, tokenID, false), "burn failed");
+            Runtime.Expect(Runtime.BurnToken(symbol, from, tokenID, false), "burn failed");
 
             Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = tokenID, chainAddress = Runtime.Chain.Address });
         }
@@ -202,11 +191,11 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(source != destination, "source and destination must be different");
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(!tokenInfo.IsFungible(), "token must be non-fungible");
 
-            Runtime.Expect(Runtime.Nexus.TransferToken(Runtime, symbol, source, destination, tokenID), "transfer failed");
+            Runtime.Expect(Runtime.TransferToken(symbol, source, destination, tokenID), "transfer failed");
 
             Runtime.Notify(EventKind.TokenSend, source, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = tokenID, symbol = symbol });
             Runtime.Notify(EventKind.TokenReceive, destination, new TokenEventData() { chainAddress = this.Runtime.Chain.Address, value = tokenID, symbol = symbol });
@@ -220,12 +209,13 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
 
-            var targetChain = this.Runtime.Nexus.FindChainByAddress(targetChainAddress);
+            var targetChain = this.Runtime.GetChainByAddress(targetChainAddress);
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
             Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "must be non-fungible token");
 
+            /*
             if (tokenInfo.IsCapped())
             {
                 var supplies = new SupplySheet(symbol, this.Runtime.Chain, Runtime.Nexus);
@@ -240,9 +230,9 @@ namespace Phantasma.Contracts
                 {
                     Runtime.Expect(supplies.MoveToChild(this.Storage, this.Runtime.Chain.Name, amount), "source supply check failed");
                 }
-            }
+            }*/
 
-            Runtime.Expect(Runtime.Nexus.TransferToken(Runtime, symbol, from, targetChainAddress, tokenID), "take token failed");
+            Runtime.Expect(Runtime.TransferToken(symbol, from, targetChainAddress, tokenID), "take token failed");
 
             Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = tokenID, chainAddress = Runtime.Chain.Address });
             Runtime.Notify(EventKind.TokenEscrow, to, new TokenEventData() { symbol = symbol, value = tokenID, chainAddress = targetChainAddress });
@@ -264,7 +254,7 @@ namespace Phantasma.Contracts
             _settledTransactions.Set(hash, true);
         }
 
-        private void DoSettlement(Chain sourceChain, Address targetAddress, TokenEventData data)
+        private void DoSettlement(IChain sourceChain, Address targetAddress, TokenEventData data)
         {
             var symbol = data.symbol;
             var value = data.value;
@@ -272,10 +262,10 @@ namespace Phantasma.Contracts
             Runtime.Expect(value > 0, "value must be greater than zero");
             Runtime.Expect(targetAddress.IsUser, "target must not user address");
 
-            Runtime.Expect(this.Runtime.Nexus.TokenExists(symbol), "invalid token");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(this.Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = this.Runtime.GetToken(symbol);
 
-            if (tokenInfo.IsCapped())
+            /*if (tokenInfo.IsCapped())
             {
                 var supplies = new SupplySheet(symbol, this.Runtime.Chain, Runtime.Nexus);
                 
@@ -288,14 +278,15 @@ namespace Phantasma.Contracts
                     Runtime.Expect(supplies.MoveFromChild(this.Storage, sourceChain.Name, value), "target supply check failed");
                 }
             }
+            */
 
             if (tokenInfo.Flags.HasFlag(TokenFlags.Fungible))
             {
-                Runtime.Expect(Runtime.Nexus.MintTokens(Runtime, symbol, targetAddress, value, true), "mint failed");
+                Runtime.Expect(Runtime.MintTokens(symbol, targetAddress, value, true), "mint failed");
             }
             else
             {
-                Runtime.Expect(Runtime.Nexus.MintToken(Runtime, symbol, targetAddress, value, true), "mint failed");
+                Runtime.Expect(Runtime.MintToken(symbol, targetAddress, value, true), "mint failed");
             }
 
             Runtime.Notify(EventKind.TokenReceive, targetAddress, new TokenEventData() { symbol = symbol, value = value, chainAddress = sourceChain.Address });
@@ -307,27 +298,21 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(!IsSettled(hash), "hash already settled");
 
-            var sourceChain = this.Runtime.Nexus.FindChainByAddress(sourceChainAddress);
+            var sourceChain = this.Runtime.GetChainByAddress(sourceChainAddress);
 
-            var block = sourceChain.FindBlockByHash(hash);
-            Runtime.Expect(block != null, "invalid block");
+            var tx = Runtime.ReadTransactionFromOracle(DomainSettings.PlatformName, sourceChain.Name, hash);
 
             int settlements = 0;
 
-            foreach (var txHash in block.TransactionHashes)
+            foreach (var evt in tx.Events)
             {
-                var evts = block.GetEventsForTransaction(txHash);
-
-                foreach (var evt in evts)
+                if (evt.Kind == EventKind.TokenEscrow)
                 {
-                    if (evt.Kind == EventKind.TokenEscrow)
+                    var data = Serialization.Unserialize<TokenEventData>(evt.Data);
+                    if (data.chainAddress == this.Runtime.Chain.Address)
                     {
-                        var data = Serialization.Unserialize<TokenEventData>(evt.Data);
-                        if (data.chainAddress == this.Runtime.Chain.Address)
-                        {
-                            DoSettlement(sourceChain, evt.Address, data);
-                            settlements++;
-                        }
+                        DoSettlement(sourceChain, evt.Address, data);
+                        settlements++;
                     }
                 }
             }
@@ -340,8 +325,8 @@ namespace Phantasma.Contracts
         #region METADATA
         public void SetMetadata(Address from, string symbol, string key, string value)
         {
-            Runtime.Expect(Runtime.Nexus.TokenExists(symbol), "token not found");
-            var tokenInfo = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(Runtime.TokenExists(symbol), "token not found");
+            var tokenInfo = this.Runtime.GetToken(symbol);
 
             Runtime.Expect(IsWitness(from), "invalid witness");
 
@@ -378,8 +363,8 @@ namespace Phantasma.Contracts
 
         public string GetMetadata(string symbol, string key)
         {
-            Runtime.Expect(Runtime.Nexus.TokenExists(symbol), "token not found");
-            var token = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(Runtime.TokenExists(symbol), "token not found");
+            var token = this.Runtime.GetToken(symbol);
 
             var metadataEntries = _metadata.Get<string, StorageList>(symbol);
 
@@ -398,8 +383,8 @@ namespace Phantasma.Contracts
 
         public Metadata[] GetMetadataList(string symbol)
         {
-            Runtime.Expect(Runtime.Nexus.TokenExists(symbol), "token not found");
-            var token = this.Runtime.Nexus.GetTokenInfo(symbol);
+            Runtime.Expect(Runtime.TokenExists(symbol), "token not found");
+            var token = this.Runtime.GetToken(symbol);
 
             var metadataEntries = _metadata.Get<string, StorageList>(symbol);
 

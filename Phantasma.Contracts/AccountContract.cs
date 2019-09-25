@@ -5,15 +5,6 @@ using Phantasma.Storage.Context;
 
 namespace Phantasma.Contracts
 {
-    public enum AccountTrigger
-    {
-        OnMint, // address, symbol, amount
-        OnBurn, // address, symbol, amount
-        OnSend, // address, symbol, amount
-        OnReceive, // address, symbol, amount
-        OnWitness, // address
-    }
-
     public sealed class AccountContract : NativeContract
     {
         public override NativeContractKind Kind => NativeContractKind.Account;

@@ -1,6 +1,4 @@
-using Phantasma.Cryptography;
-
-namespace Phantasma.Blockchain
+namespace Phantasma.Cryptography
 {
     public enum ProofOfWork
     {

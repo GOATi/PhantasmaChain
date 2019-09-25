@@ -19,9 +19,9 @@ namespace Phantasma.Contracts
         public BigInteger Value;
     }
 
-    public sealed class GovernanceContract : SmartContract
+    public sealed class GovernanceContract : NativeContract
     {
-        public override string Name => Nexus.GovernanceContractName;
+        public override NativeContractKind Kind => NativeContractKind.Governance;
 
         internal StorageMap _valueMap;
 

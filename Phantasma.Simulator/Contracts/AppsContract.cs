@@ -1,7 +1,7 @@
 ﻿using Phantasma.Cryptography;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Blockchain.Contracts.Native
+namespace Phantasma.Simulator.Contracts
 {
     // TODO refactor this into "metadata", no need for a custom struct with limited fields
     public struct AppInfo

@@ -28,16 +28,6 @@ namespace Phantasma.Blockchain.Contracts
             return $"{Kind}/{Contract} @ {Address}: {Base16.Encode(Data)}";
         }
 
-        public T GetKind<T>()
-        {
-            return (T)(object)Kind;
-        }
-
-        public T GetContent<T>()
-        {
-            return Serialization.Unserialize<T>(this.Data);
-        }
-
         public void Serialize(BinaryWriter writer)
         {
             var n = (int)(object)this.Kind; // TODO is this the most clean way to do this?
@@ -54,33 +44,6 @@ namespace Phantasma.Blockchain.Contracts
             var contract = reader.ReadVarString();
             var data = reader.ReadByteArray();
             return new Event(kind, address, contract, data);
-        }
-    }
-
-    public static class EventKindExtensions
-    {
-        public static T DecodeCustomEvent<T>(this EventKind kind)
-        {
-            if (kind < EventKind.Custom)
-            {
-                throw new Exception("Cannot cast system event");
-            }
-
-            var type = typeof(T);
-            if (!type.IsEnum)
-            {
-                throw new Exception("Can only cast event to other enum");
-            }
-
-            var intVal = ((int)kind - (int)EventKind.Custom);
-            var temp = (T)Enum.Parse(type, intVal.ToString());
-            return temp;
-        }
-
-        public static EventKind EncodeCustomEvent(Enum kind)
-        {
-            var temp = (EventKind)((int)Convert.ChangeType(kind, kind.GetTypeCode()) + (int)EventKind.Custom);
-            return temp;
         }
     }
 }
