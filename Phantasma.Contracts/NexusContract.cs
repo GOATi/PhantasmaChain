@@ -60,7 +60,7 @@ namespace Phantasma.Contracts
                 Runtime.Expect(platform == DomainSettings.PlatformName, "chain name is invalid");
             }
 
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "owner address must be user address");
 
             Runtime.Expect(this.Runtime.CreateToken(symbol, name, platform, hash, maxSupply, (int)decimals, flags, script), "token creation failed");
@@ -75,7 +75,7 @@ namespace Phantasma.Contracts
             Runtime.Expect(!string.IsNullOrEmpty(name), "name required");
             Runtime.Expect(!string.IsNullOrEmpty(parentName), "parent chain required");
 
-            Runtime.Expect(IsWitness(owner), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(owner), "invalid witness");
             Runtime.Expect(owner.IsUser, "owner address must be user address");
 
             name = name.ToLowerInvariant();
@@ -96,7 +96,7 @@ namespace Phantasma.Contracts
 
             Runtime.Expect(!string.IsNullOrEmpty(name), "name required");
 
-            Runtime.Expect(IsWitness(owner), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(owner), "invalid witness");
             Runtime.Expect(owner.IsUser, "owner address must be user address");
 
             Runtime.Expect(Runtime.CreateFeed(owner, name, mode), "feed creation failed");
@@ -143,7 +143,7 @@ namespace Phantasma.Contracts
 
         public void CreatePlatform(Address target, string fuelSymbol)
         {
-            Runtime.Expect(IsWitness(Runtime.Nexus.GenesisAddress), "must be genesis");
+            Runtime.Expect(Runtime.IsWitness(Runtime.Nexus.GenesisAddress), "must be genesis");
 
             Runtime.Expect(target.IsInterop, "external address must be interop");
 

@@ -57,7 +57,7 @@ namespace Phantasma.Contracts
         }
 
         // here we auto-initialize any fields from storage
-        internal void LoadRuntimeData(IRuntime VM)
+        public void LoadRuntimeData(IRuntime VM)
         {
             if (this.Runtime != null && this.Runtime != VM)
             {
@@ -76,7 +76,7 @@ namespace Phantasma.Contracts
                 var isStorageField = typeof(IStorageCollection).IsAssignableFrom(field.FieldType);
                 if (isStorageField)
                 {
-                    var args = new object[] { baseKey, (StorageContext)VM.ChangeSet };
+                    var args = new object[] { baseKey, (StorageContext)VM.Storage};
                     var obj = Activator.CreateInstance(field.FieldType, args);
 
                     field.SetValue(this, obj);
@@ -114,7 +114,7 @@ namespace Phantasma.Contracts
         }
 
         // here we persist any modifed fields back to storage
-        internal void UnloadRuntimeData()
+        public void UnloadRuntimeData()
         {
             Throw.IfNull(this.Runtime, nameof(Runtime));
 
@@ -149,32 +149,6 @@ namespace Phantasma.Contracts
                     this.Runtime.Storage.Put(baseKey, bytes);
                 }
             }
-        }
-
-        public bool IsWitness(Address address)
-        {
-            if (address == this.Runtime.Chain.Address || address == this.Address) 
-            {
-                var frame = Runtime.frames.Skip(1).FirstOrDefault();
-                return frame != null && frame.Context.Admin;
-            }
-
-            if (address.IsInterop)
-            {
-                return false;
-            }
-
-            if (Runtime.Transaction == null)
-            {
-                return false;
-            }
-
-            if (address.IsUser && Runtime.HasAddressScript(address))
-            {
-                return Runtime.InvokeTriggerOnAccount(address, AccountTrigger.OnWitness, address);
-            }
-
-            return Runtime.Transaction.IsSignedBy(address);
         }
 
         #region METHOD TABLE

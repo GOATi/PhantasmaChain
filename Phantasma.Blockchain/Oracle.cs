@@ -147,13 +147,13 @@ namespace Phantasma.Blockchain
                 url = url.Substring(priceTag.Length);
                 var symbols = url.Split('/');
 
-                if (symbols.Length < 1 || symbols.Length > 2)
+                if (symbols.Length != 1)
                 {
                     throw new OracleException("invalid oracle price request");
                 }
 
                 var baseSymbol = symbols[0];
-                var quoteSymbol = symbols.Length > 1 ? symbols[1] : Nexus.FiatTokenSymbol;
+                var quoteSymbol = DomainSettings.FiatTokenSymbol;
 
                 if (!Nexus.TokenExists(baseSymbol))
                 {

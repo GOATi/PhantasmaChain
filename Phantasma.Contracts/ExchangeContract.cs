@@ -140,7 +140,7 @@ namespace Phantasma.Contracts
 
         public void CreateExchange(Address from, string id, string name)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(Validation.IsValidIdentifier(id), "invalid id");
 
@@ -161,7 +161,7 @@ namespace Phantasma.Contracts
 
         private void OpenOrder(Address from, Address provider, string baseSymbol, string quoteSymbol, ExchangeOrderSide side, ExchangeOrderType orderType, BigInteger orderSize, BigInteger price)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(Runtime.GasTarget == provider, "invalid gas target");
 
@@ -200,7 +200,7 @@ namespace Phantasma.Contracts
                 orderEscrowAmount = CalculateEscrowAmount(orderSize, price, baseToken, quoteToken, side);
             }
 
-            var balance = Runtime.GetBalance(orderEscrowToken, from);
+            var balance = Runtime.GetBalance(orderEscrowToken.Symbol, from);
             Runtime.Expect(balance >= orderEscrowAmount, "not enough balance");
 
             Runtime.Expect(Runtime.TransferTokens(orderEscrowSymbol, from, this.Address, orderEscrowAmount), "transfer failed");
@@ -393,7 +393,7 @@ namespace Phantasma.Contracts
                 var order = orderList.Get<ExchangeOrder>(i);
                 if (order.Uid == uid)
                 {
-                    Runtime.Expect(IsWitness(order.Creator), "invalid witness");
+                    Runtime.Expect(Runtime.IsWitness(order.Creator), "invalid witness");
 
                     orderList.RemoveAt<ExchangeOrder>(i);
                     _orderMap.Remove<BigInteger>(uid);
@@ -517,7 +517,7 @@ namespace Phantasma.Contracts
         #region OTC TRADES
         public void SwapTokens(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger amount, BigInteger price, byte[] signature)
         {
-            Runtime.Expect(IsWitness(buyer), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(buyer), "invalid witness");
             Runtime.Expect(seller != buyer, "invalid seller");
 
             Runtime.Expect(seller.IsUser, "seller must be user address");
@@ -561,7 +561,7 @@ namespace Phantasma.Contracts
 
         public void SwapToken(Address buyer, Address seller, string baseSymbol, string quoteSymbol, BigInteger tokenID, BigInteger price, byte[] signature)
         {
-            Runtime.Expect(IsWitness(buyer), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(buyer), "invalid witness");
             Runtime.Expect(seller != buyer, "invalid seller");
 
             Runtime.Expect(seller.IsUser, "seller must be user address");

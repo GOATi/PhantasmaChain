@@ -50,7 +50,7 @@ namespace Phantasma.Contracts
 
         public void SellToken(Address from, string baseSymbol, string quoteSymbol, BigInteger tokenID, BigInteger price, Timestamp endDate)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(endDate > Runtime.Time, "invalid end date");
 
             var maxAllowedDate = Runtime.Time + TimeSpan.FromDays(30);
@@ -81,7 +81,7 @@ namespace Phantasma.Contracts
 
         public void BuyToken(Address from, string symbol, BigInteger tokenID)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             var auctionID = symbol + "." + tokenID;
 

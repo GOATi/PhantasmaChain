@@ -35,8 +35,8 @@ namespace Phantasma.Contracts
 
         public const int LendReturn = 50;
 
-        internal const string MaxLoanAmountTag = "gas.max.loan"; //9999 * 10000;
-        internal const string MaxLenderCountTag = "gas.lender.count";
+        public const string MaxLoanAmountTag = "gas.max.loan"; //9999 * 10000;
+        public const string MaxLenderCountTag = "gas.lender.count";
 
         public void AllowGas(Address from, Address target, BigInteger price, BigInteger limit)
         {
@@ -46,7 +46,7 @@ namespace Phantasma.Contracts
             }
 
             Runtime.Expect(from.IsUser, "must be a user address");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(target.IsSystem, "destination must be system address");
 
             Runtime.Expect(price > 0, "price must be positive amount");
@@ -80,7 +80,7 @@ namespace Phantasma.Contracts
             Runtime.Expect(Runtime.Chain.IsRoot, "must be a root chain");
 
             Runtime.Expect(from.IsUser, "must be a user address");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(price > 0, "price must be positive amount");
             Runtime.Expect(limit > 0, "limit must be positive amount");
@@ -123,7 +123,7 @@ namespace Phantasma.Contracts
                 return;
             }
 
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(_allowanceMap.ContainsKey(from), "no gas allowance found");
 
@@ -296,7 +296,7 @@ namespace Phantasma.Contracts
         {
             var maxLenderCount = Runtime.GetGovernanceValue(MaxLenderCountTag);
             Runtime.Expect(_lenderList.Count() < maxLenderCount, "too many lenders already");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(to.IsUser, "invalid destination address");
             Runtime.Expect(!IsLender(from), "already lending at source address");
             Runtime.Expect(!IsLender(to), "already lending at destination address");
@@ -309,7 +309,7 @@ namespace Phantasma.Contracts
 
         public void StopLend(Address from)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(IsLender(from), "not a lender");
 
             int index = -1;

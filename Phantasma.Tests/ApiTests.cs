@@ -11,6 +11,8 @@ using System;
 using System.Linq;
 using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Core.Types;
+using Phantasma.Domain;
+using Phantasma.Contracts;
 
 namespace Phantasma.Tests
 {
@@ -77,7 +79,7 @@ namespace Phantasma.Tests
             var contractName = "blabla";
             var script = new ScriptBuilder().CallContract(contractName, "bleble", 123).ToScript();
 
-            var chainName = Nexus.RootChainName;
+            var chainName = DomainSettings.RootChainName;
             test.simulator.CurrentTime = Timestamp.Now;
             var tx = new Transaction("simnet", chainName, script, test.simulator.CurrentTime + TimeSpan.FromHours(1));
             tx.Sign(KeyPair.FromWIF(testWIF));
@@ -124,7 +126,7 @@ namespace Phantasma.Tests
 
             // Create the token CoolToken as an NFT
             test.simulator.BeginBlock();
-            test.simulator.GenerateToken(test.owner, nftSymbol, "CoolToken", Nexus.PlatformName, Hash.FromString(nftSymbol), 0, 0, Domain.TokenFlags.None);
+            test.simulator.GenerateToken(test.owner, nftSymbol, "CoolToken", DomainSettings.PlatformName, Hash.FromString(nftSymbol), 0, 0, Domain.TokenFlags.None);
             test.simulator.EndBlock();
 
             var token = test.simulator.Nexus.GetTokenInfo(nftSymbol);
@@ -138,7 +140,7 @@ namespace Phantasma.Tests
 
             var account = (AccountResult)test.api.GetAccount(testUser.Address.Text);
             Assert.IsTrue(account.address == testUser.Address.Text);
-            Assert.IsTrue(account.name == ValidationUtils.ANONYMOUS);
+            Assert.IsTrue(account.name == Validation.ANONYMOUS);
             Assert.IsTrue(account.balances.Length == 1);
 
             var balance = account.balances[0];

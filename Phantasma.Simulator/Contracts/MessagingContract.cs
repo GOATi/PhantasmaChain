@@ -1,4 +1,5 @@
-﻿using Phantasma.Core.Types;
+﻿using Phantasma.Contracts;
+using Phantasma.Core.Types;
 using Phantasma.Cryptography;
 using Phantasma.Storage.Context;
 
@@ -26,7 +27,7 @@ namespace Phantasma.Simulator.Contracts
 
         public void SendMessage(Address from, Address to, byte[] content)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(to.IsUser, "destination must be user address");
 
             Runtime.Expect(content.Length >= MAX_MESSAGE_LENGTH, "message too small");

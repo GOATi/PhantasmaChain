@@ -14,7 +14,6 @@ namespace Phantasma.Domain
     public enum NativeContractKind
     {
         Gas,
-        Token,
         Block,
         Nexus,
         Stake,
@@ -30,6 +29,9 @@ namespace Phantasma.Domain
         Relay,
         Bomb,
         Market,
+        Friends,
+        Vault,
+        Sale
     }
 
     public sealed class ContractInterface

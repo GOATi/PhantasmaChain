@@ -2,19 +2,19 @@
 using Phantasma.Domain;
 using Phantasma.Storage.Context;
 
-namespace Phantasma.Simulator.Contracts
+namespace Phantasma.Contracts
 {
-    public sealed class FriendContract : SmartContract
+    public sealed class FriendContract : NativeContract
     {
         public static readonly int FRIEND_LIMIT_PER_ACCOUNT = 100;
 
-        public override string Name => "friends";
+        public override NativeContractKind Kind => NativeContractKind.Friends;
+
         internal StorageMap _friendMap;
 
-        #region FRIENDLIST
         public void AddFriend(Address target, Address friend)
         {
-            Runtime.Expect(IsWitness(target), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(target), "invalid witness");
 
             Runtime.Expect(friend.IsUser, "friend must be user addres");
             Runtime.Expect(friend != target, "friend must be different from target address");
@@ -30,7 +30,7 @@ namespace Phantasma.Simulator.Contracts
 
         public void RemoveFriend(Address target, Address friend)
         {
-            Runtime.Expect(IsWitness(target), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(target), "invalid witness");
 
             var friendList = _friendMap.Get<Address, StorageList>(target);
 
@@ -45,7 +45,6 @@ namespace Phantasma.Simulator.Contracts
             var friendList = _friendMap.Get<Address, StorageList>(target);
             return friendList.All<Address>();
         }
-        #endregion
 
     }
 }

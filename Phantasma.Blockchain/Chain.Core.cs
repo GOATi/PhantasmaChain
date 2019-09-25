@@ -95,7 +95,6 @@ namespace Phantasma.Blockchain
         {
             Throw.If(contractNames == null || !contractNames.Any(), "contracts required");
             Throw.If(!contractNames.Contains(NativeContractKind.Gas.GetName()), "gas contract required");
-            Throw.If(!contractNames.Contains(NativeContractKind.Token.GetName()), "token contract required");
             Throw.If(!contractNames.Contains(NativeContractKind.Block.GetName()), "block contract required");
 
             foreach (var contractName in contractNames)
@@ -627,7 +626,7 @@ namespace Phantasma.Blockchain
         #region validators
         public Address GetCurrentValidator()
         {
-            return InvokeContract(Nexus.BlockContractName, "GetCurrentValidator").AsAddress();
+            return InvokeContract(NativeContractKind.Block.GetName(), nameof(BlockContract.GetCurrentValidator)).AsAddress();
         }
 
         public Address GetValidatorForBlock(Hash hash)
@@ -647,7 +646,7 @@ namespace Phantasma.Blockchain
 
             foreach (var evt in events)
             {
-                if (evt.Kind == EventKind.BlockCreate && evt.Contract == Nexus.BlockContractName)
+                if (evt.Kind == EventKind.BlockCreate && evt.Contract == NativeContractKind.Block.GetName())
                 {
                     return evt.Address;
                 }

@@ -50,7 +50,7 @@ namespace Phantasma.Contracts
 
         public void RegisterLink(Address from, Address target)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "source address must be user address");
             Runtime.Expect(target.IsInterop, "target address must be interop address");
             Runtime.Expect(!Runtime.IsKnownValidator(from), "source address cant be chain validator");
@@ -144,7 +144,7 @@ namespace Phantasma.Contracts
             Runtime.Expect(Runtime.PlatformExists(platform), "unsupported platform");
             var platformInfo = Runtime.GetPlatform(platform);
 
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "must be user address");
 
             var chainHashes = _hashes.Get<string, StorageSet>(platform);
@@ -254,7 +254,7 @@ namespace Phantasma.Contracts
         public void WithdrawTokens(Address from, Address to, string symbol, BigInteger amount)
         {
             Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(from.IsUser, "source must be user address");
             Runtime.Expect(to.IsInterop, "destination must be interop address");
@@ -312,7 +312,7 @@ namespace Phantasma.Contracts
 
         public void SetBroker(Address from, Hash hash)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(Runtime.IsKnownValidator(from), "invalid validator");
 
             var count = _withdraws.Count();
@@ -347,7 +347,7 @@ namespace Phantasma.Contracts
         // we do however allow to cancel a broker if too long has passed
         public void CancelBroker(Address from, Hash hash)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             var count = _withdraws.Count();
             var index = -1;

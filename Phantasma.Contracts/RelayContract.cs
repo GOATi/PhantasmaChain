@@ -210,7 +210,7 @@ namespace Phantasma.Contracts
 
         public void OpenChannel(Address from, ECPoint publicKey)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(!_keys.ContainsKey<Address>(from), "channel already open");
 
             _keys.Set<Address, ECPoint>(from, publicKey);
@@ -226,7 +226,7 @@ namespace Phantasma.Contracts
 
         public void TopUpChannel(Address from, BigInteger count)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(count >= 1, "insufficient topup amount");
             var amount = RelayFeePerMessage * count;
 

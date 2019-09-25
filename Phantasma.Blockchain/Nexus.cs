@@ -26,7 +26,7 @@ namespace Phantasma.Blockchain
 
         public const string NexusProtocolVersionTag = "nexus.protocol.version";
 
-        public Chain RootChain => FindChainByName(RootChainName);
+        public Chain RootChain => FindChainByAddress(RootChainAddress);
 
         private KeyValueStore<string, byte[]> _vars;
         private Dictionary<string, KeyValueStore<BigInteger, TokenContent>> _tokenContents = new Dictionary<string, KeyValueStore<BigInteger, TokenContent>>();
@@ -357,25 +357,25 @@ namespace Phantasma.Blockchain
             }
 
             var chain = RootChain;
-            return chain.InvokeContract(Nexus.AccountContractName, nameof(AccountContract.LookUpName), name).AsAddress();
+            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpName), name).AsAddress();
         }
 
         public string LookUpAddressName(Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(Nexus.AccountContractName, nameof(AccountContract.LookUpAddress), address).AsString();
+            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpAddress), address).AsString();
         }
 
         public byte[] LookUpAddressScript(Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(Nexus.AccountContractName, nameof(AccountContract.LookUpScript), address).AsByteArray();
+            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpScript), address).AsByteArray();
         }
 
         public bool HasScript(Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(Nexus.AccountContractName, nameof(AccountContract.HasScript), address).AsBool();
+            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.HasScript), address).AsBool();
         }
         #endregion
 
@@ -395,7 +395,6 @@ namespace Phantasma.Blockchain
                 case "exchange": contract  = new ExchangeContract(); break;
                 case "market":    contract  = new MarketContract(); break;
                 case "stake":   contract  = new StakeContract(); break;
-                case "token": contract = new TokenContract(); break;
                 case "swap": contract = new SwapContract(); break;
                 case "gas": contract = new GasContract(); break;
                 case "block": contract = new BlockContract(); break;
@@ -403,10 +402,10 @@ namespace Phantasma.Blockchain
                 case "storage": contract  = new StorageContract(); break;
                 case "dex": contract = new ExchangeContract(); break;
                 case "interop": contract = new InteropContract(); break;
-                /*case "friends": contract  = new FriendContract(); break;
+                case "friends": contract  = new FriendContract(); break;
                 case "vault": contract  = new VaultContract(); break;
-                case "apps": contract  = new AppsContract(); break;
                 case "sale": contract = new SaleContract(); break;
+                /*case "apps": contract  = new AppsContract(); break;
                 case "nacho": contract = new NachoContract(); break;
                 */
                 default:
@@ -467,7 +466,6 @@ namespace Phantasma.Blockchain
 
             var contractSet = new HashSet<string>(contractNames);
             contractSet.Add(NativeContractKind.Gas.GetName());
-            contractSet.Add(NativeContractKind.Token.GetName());
             contractSet.Add(NativeContractKind.Block.GetName());
             chain.DeployContracts(contractSet);
 
@@ -543,7 +541,7 @@ namespace Phantasma.Blockchain
 
         public string GetParentChainByName(string chainName)
         {
-            if (chainName == RootChainName)
+            if (chainName == DomainSettings.RootChainName)
             {
                 return null;
             }
@@ -787,7 +785,7 @@ namespace Phantasma.Blockchain
             return supplies.GetTotal(storage);
         }
 
-        internal bool MintTokens(RuntimeVM runtimeVM, string symbol, Address target, BigInteger amount, bool isSettlement)
+        internal bool MintTokens(RuntimeVM runtime, string symbol, Address target, BigInteger amount, bool isSettlement)
         {
             if (!TokenExists(symbol))
             {
@@ -806,25 +804,25 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
-            var supply = new SupplySheet(symbol, runtimeVM.Chain, this);
-            if (!supply.Mint(runtimeVM.ChangeSet, amount, tokenInfo.MaxSupply))
+            var supply = new SupplySheet(symbol, runtime.Chain, this);
+            if (!supply.Mint(runtime.ChangeSet, amount, tokenInfo.MaxSupply))
             {
                 return false;
             }
 
             var balances = new BalanceSheet(symbol);
-            if (!balances.Add(runtimeVM.ChangeSet, target, amount))
+            if (!balances.Add(runtime.ChangeSet, target, amount))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, isSettlement ? TokenTrigger.OnReceive : TokenTrigger.OnMint, target, symbol, amount);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, isSettlement ? TokenTrigger.OnReceive : TokenTrigger.OnMint, target, symbol, amount);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, target, isSettlement ? AccountTrigger.OnReceive : AccountTrigger.OnMint, target, symbol, amount);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(target, isSettlement ? AccountTrigger.OnReceive : AccountTrigger.OnMint, target, symbol, amount);
             if (!accountTriggerResult)
             {
                 return false;
@@ -834,7 +832,7 @@ namespace Phantasma.Blockchain
         }
 
         // NFT version
-        internal bool MintToken(RuntimeVM runtimeVM, string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        internal bool MintToken(RuntimeVM runtime, string symbol, Address target, BigInteger tokenID, bool isSettlement)
         {
             if (!TokenExists(symbol))
             {
@@ -848,35 +846,35 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
-            var supply = new SupplySheet(symbol, runtimeVM.Chain, this);
-            if (!supply.Mint(runtimeVM.ChangeSet, 1, tokenInfo.MaxSupply))
+            var supply = new SupplySheet(symbol, runtime.Chain, this);
+            if (!supply.Mint(runtime.ChangeSet, 1, tokenInfo.MaxSupply))
             {
                 return false;
             }
 
             var ownerships = new OwnershipSheet(symbol);
-            if (!ownerships.Add(runtimeVM.ChangeSet, target, tokenID))
+            if (!ownerships.Add(runtime.ChangeSet, target, tokenID))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, isSettlement ? TokenTrigger.OnReceive : TokenTrigger.OnMint, target, symbol, tokenID);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, isSettlement ? TokenTrigger.OnReceive : TokenTrigger.OnMint, target, symbol, tokenID);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, target, isSettlement ? AccountTrigger.OnReceive : AccountTrigger.OnMint, target, symbol, tokenID);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(target, isSettlement ? AccountTrigger.OnReceive : AccountTrigger.OnMint, target, symbol, tokenID);
             if (!accountTriggerResult)
             {
                 return false;
             }
 
-            EditNFTLocation(symbol, tokenID, runtimeVM.Chain.Address, target);
+            EditNFTLocation(symbol, tokenID, runtime.Chain.Name, target);
             return true;
         }
 
-        internal bool BurnTokens(RuntimeVM runtimeVM, string symbol, Address target, BigInteger amount, bool isSettlement)
+        internal bool BurnTokens(RuntimeVM runtime, string symbol, Address target, BigInteger amount, bool isSettlement)
         {
             if (!TokenExists(symbol))
             {
@@ -895,26 +893,26 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
-            var supply = new SupplySheet(symbol, runtimeVM.Chain, this);
+            var supply = new SupplySheet(symbol, runtime.Chain, this);
 
-            if (tokenInfo.IsCapped() && !supply.Burn(runtimeVM.ChangeSet, amount))
+            if (tokenInfo.IsCapped() && !supply.Burn(runtime.ChangeSet, amount))
             {
                 return false;
             }
 
             var balances = new BalanceSheet(symbol);
-            if (!balances.Subtract(runtimeVM.ChangeSet, target, amount))
+            if (!balances.Subtract(runtime.ChangeSet, target, amount))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, isSettlement ? TokenTrigger.OnSend: TokenTrigger.OnBurn, target, symbol, amount);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, isSettlement ? TokenTrigger.OnSend: TokenTrigger.OnBurn, target, symbol, amount);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, target, isSettlement ? AccountTrigger.OnSend:  AccountTrigger.OnBurn, target, symbol, amount);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(target, isSettlement ? AccountTrigger.OnSend:  AccountTrigger.OnBurn, target, symbol, amount);
             if (!accountTriggerResult)
             {
                 return false;
@@ -924,7 +922,7 @@ namespace Phantasma.Blockchain
         }
 
         // NFT version
-        internal bool BurnToken(RuntimeVM runtimeVM, string symbol, Address target, BigInteger tokenID, bool isSettlement)
+        internal bool BurnToken(RuntimeVM runtime, string symbol, Address target, BigInteger tokenID, bool isSettlement)
         {
             if (!TokenExists(symbol))
             {
@@ -941,7 +939,7 @@ namespace Phantasma.Blockchain
             var chain = RootChain;
             var supply = new SupplySheet(symbol, chain, this);
 
-            if (!supply.Burn(runtimeVM.ChangeSet, 1))
+            if (!supply.Burn(runtime.ChangeSet, 1))
             {
                 return false;
             }
@@ -952,18 +950,18 @@ namespace Phantasma.Blockchain
             }
 
             var ownerships = new OwnershipSheet(symbol);
-            if (!ownerships.Remove(runtimeVM.ChangeSet, target, tokenID))
+            if (!ownerships.Remove(runtime.ChangeSet, target, tokenID))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, isSettlement ? TokenTrigger.OnSend : TokenTrigger.OnBurn, target, symbol, tokenID);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, isSettlement ? TokenTrigger.OnSend : TokenTrigger.OnBurn, target, symbol, tokenID);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, target, isSettlement ?  AccountTrigger.OnSend: AccountTrigger.OnBurn, target, symbol, tokenID);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(target, isSettlement ?  AccountTrigger.OnSend: AccountTrigger.OnBurn, target, symbol, tokenID);
             if (!accountTriggerResult)
             {
                 return false;
@@ -971,7 +969,7 @@ namespace Phantasma.Blockchain
             return true;
         }
 
-        internal bool TransferTokens(RuntimeVM runtimeVM, string symbol, Address source, Address destination, BigInteger amount)
+        internal bool TransferTokens(RuntimeVM runtime, string symbol, Address source, Address destination, BigInteger amount)
         {
             if (!TokenExists(symbol))
             {
@@ -1006,35 +1004,35 @@ namespace Phantasma.Blockchain
             }
 
             var balances = new BalanceSheet(symbol);
-            if (!balances.Subtract(runtimeVM.ChangeSet, source, amount))
+            if (!balances.Subtract(runtime.ChangeSet, source, amount))
             {
                 return false;
             }
 
-            if (!balances.Add(runtimeVM.ChangeSet, destination, amount))
+            if (!balances.Add(runtime.ChangeSet, destination, amount))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, TokenTrigger.OnSend, source, symbol, amount);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, TokenTrigger.OnSend, source, symbol, amount);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, TokenTrigger.OnReceive, destination, symbol, amount);
+            tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, TokenTrigger.OnReceive, destination, symbol, amount);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, source, AccountTrigger.OnSend, source, symbol, amount);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(source, AccountTrigger.OnSend, source, symbol, amount);
             if (!accountTriggerResult)
             {
                 return false;
             }
 
-            accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, destination, AccountTrigger.OnReceive, destination, symbol, amount);
+            accountTriggerResult = runtime.InvokeTriggerOnAccount(destination, AccountTrigger.OnReceive, destination, symbol, amount);
             if (!accountTriggerResult)
             {
                 return false;
@@ -1043,7 +1041,7 @@ namespace Phantasma.Blockchain
             return true;
         }
 
-        internal bool TransferToken(RuntimeVM runtimeVM, string symbol, Address source, Address destination, BigInteger tokenID)
+        internal bool TransferToken(RuntimeVM runtime, string symbol, Address source, Address destination, BigInteger tokenID)
         {
             if (!TokenExists(symbol))
             {
@@ -1078,41 +1076,41 @@ namespace Phantasma.Blockchain
             }
 
             var ownerships = new OwnershipSheet(symbol);
-            if (!ownerships.Remove(runtimeVM.ChangeSet, source, tokenID))
+            if (!ownerships.Remove(runtime.ChangeSet, source, tokenID))
             {
                 return false;
             }
 
-            if (!ownerships.Add(runtimeVM.ChangeSet, destination, tokenID))
+            if (!ownerships.Add(runtime.ChangeSet, destination, tokenID))
             {
                 return false;
             }
 
-            var tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, TokenTrigger.OnSend, source, symbol, tokenID);
+            var tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, TokenTrigger.OnSend, source, symbol, tokenID);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            tokenTriggerResult = SmartContract.InvokeTriggerOnToken(runtimeVM, tokenInfo, TokenTrigger.OnReceive, destination, symbol, tokenID);
+            tokenTriggerResult = runtime.InvokeTriggerOnToken(tokenInfo, TokenTrigger.OnReceive, destination, symbol, tokenID);
             if (!tokenTriggerResult)
             {
                 return false;
             }
 
-            var accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, source, AccountTrigger.OnSend, source, symbol, tokenID);
+            var accountTriggerResult = runtime.InvokeTriggerOnAccount(source, AccountTrigger.OnSend, source, symbol, tokenID);
             if (!accountTriggerResult)
             {
                 return false;
             }
 
-            accountTriggerResult = SmartContract.InvokeTriggerOnAccount(runtimeVM, destination, AccountTrigger.OnReceive, destination, symbol, tokenID);
+            accountTriggerResult = runtime.InvokeTriggerOnAccount(destination, AccountTrigger.OnReceive, destination, symbol, tokenID);
             if (!accountTriggerResult)
             {
                 return false;
             }
 
-            EditNFTLocation(symbol, tokenID, runtimeVM.Chain.Address, destination);
+            EditNFTLocation(symbol, tokenID, runtime.Chain.Name, destination);
             return true;
         }
 
@@ -1146,7 +1144,7 @@ namespace Phantasma.Blockchain
             return tokenID;
         }
 
-        internal BigInteger CreateNFT(string tokenSymbol, Address chainAddress, byte[] rom, byte[] ram)
+        internal BigInteger CreateNFT(string tokenSymbol, string chainName, Address address,  byte[] rom, byte[] ram)
         {
             Throw.IfNull(rom, nameof(rom));
             Throw.IfNull(ram, nameof(ram));
@@ -1169,7 +1167,7 @@ namespace Phantasma.Blockchain
 
                 var tokenID = GenerateIDForNFT(tokenSymbol);
 
-                var content = new TokenContent(chainAddress, chainAddress, rom, ram);
+                var content = new TokenContent(chainName, address, rom, ram);
                 contents[tokenID] = content;
 
                 return tokenID;
@@ -1195,7 +1193,7 @@ namespace Phantasma.Blockchain
             return false;
         }
 
-        private bool EditNFTLocation(string tokenSymbol, BigInteger tokenID, Address chainAddress, Address owner)
+        private bool EditNFTLocation(string tokenSymbol, BigInteger tokenID, string chainName, Address owner)
         {
             lock (_tokenContents)
             {
@@ -1206,7 +1204,7 @@ namespace Phantasma.Blockchain
                     if (contents.ContainsKey(tokenID))
                     {
                         var content = contents[tokenID];
-                        content = new TokenContent(chainAddress, owner, content.ROM, content.RAM);
+                        content = new TokenContent(chainName, owner, content.ROM, content.RAM);
                         contents.Set(tokenID, content);
                         return true;
                     }
@@ -1273,15 +1271,15 @@ namespace Phantasma.Blockchain
 
             sb.CallContract("block", "OpenBlock", owner.Address);
 
-            sb.CallContract(Nexus.TokenContractName, "MintTokens", owner.Address, owner.Address, StakingTokenSymbol, UnitConversion.ToBigInteger(8863626, StakingTokenDecimals));
+            sb.CallInterop("Runtime.MintTokens", owner.Address, owner.Address, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(8863626, DomainSettings.StakingTokenDecimals));
             // requires staking token to be created previously
             // note this is a completly arbitrary number just to be able to generate energy in the genesis, better change it later
-            sb.CallContract(Nexus.StakeContractName, "Stake", owner.Address, UnitConversion.ToBigInteger(100000, StakingTokenDecimals));
-            sb.CallContract(Nexus.StakeContractName, "Claim", owner.Address, owner.Address);
+            sb.CallContract(NativeContractKind.Stake.GetName(), "Stake", owner.Address, UnitConversion.ToBigInteger(100000, DomainSettings.StakingTokenDecimals));
+            sb.CallContract(NativeContractKind.Stake.GetName(), "Claim", owner.Address, owner.Address);
 
             var script = sb.EndScript();
 
-            var tx = new Transaction(Name, RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
+            var tx = new Transaction(Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
             tx.Sign(owner);
 
             return tx;
@@ -1292,11 +1290,11 @@ namespace Phantasma.Blockchain
             var script = ScriptUtils.
                 BeginScript().
                 //AllowGas(owner.Address, Address.Null, 1, 9999).
-                CallContract(Nexus.NexusContractName, "CreateChain", owner.Address, name, RootChain.Name, contracts).
+                CallContract(NativeContractKind.Nexus.GetName(), "CreateChain", owner.Address, name, RootChain.Name, contracts).
                 //SpendGas(owner.Address).
                 EndScript();
 
-            var tx = new Transaction(Name, RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
+            var tx = new Transaction(Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
             tx.Mine((int)ProofOfWork.Moderate);
             tx.Sign(owner);
             return tx;
@@ -1307,11 +1305,11 @@ namespace Phantasma.Blockchain
             var script = ScriptUtils.
                 BeginScript().
                 //AllowGas(owner.Address, Address.Null, 1, 9999).
-                CallContract(Nexus.GovernanceContractName, "CreateValue", name, initial, min, max).
+                CallContract(NativeContractKind.Governance.GetName(), "CreateValue", name, initial, min, max).
                 //SpendGas(owner.Address).
                 EndScript();
 
-            var tx = new Transaction(Name, RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
+            var tx = new Transaction(Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
             tx.Sign(owner);
             return tx;
         }
@@ -1322,12 +1320,12 @@ namespace Phantasma.Blockchain
                 BeginScript().
                 //AllowGas(owner.Address, Address.Null, 1, 9999).
                 CallContract("validator", "SetValidator", owner.Address, new BigInteger(0), ValidatorType.Primary).
-                CallContract(Nexus.SwapContractName, "DepositTokens", owner.Address, StakingTokenSymbol, UnitConversion.ToBigInteger(1, StakingTokenDecimals)).
-                CallContract(Nexus.SwapContractName, "DepositTokens", owner.Address, FuelTokenSymbol, UnitConversion.ToBigInteger(100, FuelTokenDecimals)).
+                CallContract(NativeContractKind.Swap.GetName(), "DepositTokens", owner.Address, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(1, DomainSettings.StakingTokenDecimals)).
+                CallContract(NativeContractKind.Swap.GetName(), "DepositTokens", owner.Address, DomainSettings.FuelTokenSymbol, UnitConversion.ToBigInteger(100, DomainSettings.FuelTokenDecimals)).
                 //SpendGas(owner.Address).
                 EndScript();
 
-            var tx = new Transaction(Name, RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
+            var tx = new Transaction(Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
             tx.Sign(owner);
             return tx;
         }
@@ -1341,7 +1339,7 @@ namespace Phantasma.Blockchain
                 SpendGas(owner.Address).
                 EndScript();
 
-            var tx = new Transaction(Name, RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
+            var tx = new Transaction(Name, DomainSettings.RootChainName, script, Timestamp.Now + TimeSpan.FromDays(300));
             tx.Sign(owner);
             return tx;
         }
@@ -1362,27 +1360,18 @@ namespace Phantasma.Blockchain
 
             this.GenesisAddress = owner.Address;
 
-            var rootChain = CreateChain(null, owner.Address, RootChainName, null, new[] {
-                NexusContractName,
-                ValidatorContractName,
-                GovernanceContractName,
-                ConsensusContractName,
-                AccountContractName,
-                ExchangeContractName,
-                SwapContractName,
-                InteropContractName,
-                StakeContractName,
-                InteropContractName,
-                StorageContractName,
-                RelayContractName,
-                BombContractName,
-                PrivacyContractName,
-                "friends", "market",  "vault", "apps"});
+            var contracts = new HashSet<NativeContractKind>(Enum.GetValues(typeof(NativeContractKind)).Cast<NativeContractKind>());
+            contracts.Remove(NativeContractKind.Vault);
+            contracts.Remove(NativeContractKind.Sale);
+
+            var contractNames = contracts.Select(x => x.GetName()).ToArray();
+
+            var rootChain = CreateChain(null, owner.Address, DomainSettings.RootChainName, null, contractNames);
 
             var tokenScript = new byte[0];
-            CreateToken(StakingTokenSymbol, StakingTokenName, "neo", Hash.FromUnpaddedHex("ed07cffad18f1308db51920d99a2af60ac66a7b3"),  UnitConversion.ToBigInteger(91136374, StakingTokenDecimals), StakingTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Finite | TokenFlags.Divisible | TokenFlags.Stakable | TokenFlags.External, tokenScript);
-            CreateToken(FuelTokenSymbol, FuelTokenName, PlatformName, Hash.FromString(FuelTokenSymbol), PlatformSupply, FuelTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Finite | TokenFlags.Divisible | TokenFlags.Fuel, tokenScript);
-            CreateToken(FiatTokenSymbol, FiatTokenName, PlatformName, Hash.FromString(FiatTokenSymbol), 0, FiatTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Divisible | TokenFlags.Fiat, tokenScript);
+            CreateToken(DomainSettings.StakingTokenSymbol, DomainSettings.StakingTokenName, "neo", Hash.FromUnpaddedHex("ed07cffad18f1308db51920d99a2af60ac66a7b3"),  UnitConversion.ToBigInteger(91136374, DomainSettings.StakingTokenDecimals), DomainSettings.StakingTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Finite | TokenFlags.Divisible | TokenFlags.Stakable | TokenFlags.External, tokenScript);
+            CreateToken(DomainSettings.FuelTokenSymbol, DomainSettings.FuelTokenName, DomainSettings.PlatformName, Hash.FromString(DomainSettings.FuelTokenSymbol), DomainSettings.PlatformSupply, DomainSettings.FuelTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Finite | TokenFlags.Divisible | TokenFlags.Fuel, tokenScript);
+            CreateToken(DomainSettings.FiatTokenSymbol, DomainSettings.FiatTokenName, DomainSettings.PlatformName, Hash.FromString(DomainSettings.FiatTokenSymbol), 0, DomainSettings.FiatTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Divisible | TokenFlags.Fiat, tokenScript);
 
             // create genesis transactions
             var transactions = new List<Transaction>
@@ -1397,10 +1386,11 @@ namespace Phantasma.Blockchain
                 ValueCreateTx(owner, ConsensusContract.PollVoteLimitTag, 50000, 100, 500000),
                 ValueCreateTx(owner, ConsensusContract.MaxEntriesPerPollTag, 10, 2, 1000),
                 ValueCreateTx(owner, ConsensusContract.MaximumPollLengthTag, 86400 * 90, 86400 * 2, 86400 * 120),
-                ValueCreateTx(owner, StakeContract.MasterStakeThresholdTag, StakeContract.DefaultMasterThreshold, UnitConversion.ToBigInteger(1000, Nexus.StakingTokenDecimals), UnitConversion.ToBigInteger(200000, Nexus.StakingTokenDecimals)),
-                ValueCreateTx(owner, StakeContract.VotingStakeThresholdTag, UnitConversion.ToBigInteger(1000, Nexus.StakingTokenDecimals), UnitConversion.ToBigInteger(1, Nexus.StakingTokenDecimals), UnitConversion.ToBigInteger(10000, Nexus.StakingTokenDecimals)),
+                ValueCreateTx(owner, StakeContract.MasterStakeThresholdTag, StakeContract.DefaultMasterThreshold, UnitConversion.ToBigInteger(1000, DomainSettings.StakingTokenDecimals), UnitConversion.ToBigInteger(200000, DomainSettings.StakingTokenDecimals)),
+                ValueCreateTx(owner, StakeContract.VotingStakeThresholdTag, UnitConversion.ToBigInteger(1000, DomainSettings.StakingTokenDecimals), UnitConversion.ToBigInteger(1, DomainSettings.StakingTokenDecimals), UnitConversion.ToBigInteger(10000, DomainSettings.StakingTokenDecimals)),
 
                 ChainCreateTx(owner, "sale", "sale"),
+                ChainCreateTx(owner, "vault", "vault"),
 
                 ConsensusStakeCreateTx(owner)
             };
@@ -1482,13 +1472,13 @@ namespace Phantasma.Blockchain
 
         public ValidatorEntry[] GetValidators()
         {
-            var validators = (ValidatorEntry[])RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetValidators)).ToObject();
+            var validators = (ValidatorEntry[])RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidators)).ToObject();
             return validators;
         }
 
         public int GetPrimaryValidatorCount()
         {
-            var count = RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
+            var count = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
             if (count < 1)
             {
                 return 1;
@@ -1498,13 +1488,13 @@ namespace Phantasma.Blockchain
 
         public int GetSecondaryValidatorCount()
         {
-            var count = RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
+            var count = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
             return (int)count;
         }
 
         public ValidatorType GetValidatorType(Address address)
         {
-            var result = RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetValidatorType), address).AsEnum<ValidatorType>();
+            var result = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorType), address).AsEnum<ValidatorType>();
             return result;
         }
 
@@ -1529,14 +1519,14 @@ namespace Phantasma.Blockchain
 
         public BigInteger GetStakeFromAddress(Address address)
         {
-            var result = RootChain.InvokeContract(Nexus.StakeContractName, nameof(StakeContract.GetStake), address).AsNumber();
+            var result = RootChain.InvokeContract(NativeContractKind.Stake.GetName(), nameof(StakeContract.GetStake), address).AsNumber();
             return result;
         }
 
         public bool IsStakeMaster(Address address)
         {
             var stake = GetStakeFromAddress(address);
-            var masterThresold = RootChain.InvokeContract(Nexus.StakeContractName, nameof(StakeContract.GetMasterThreshold)).AsNumber();
+            var masterThresold = RootChain.InvokeContract(NativeContractKind.Stake.GetName(), nameof(StakeContract.GetMasterThreshold)).AsNumber();
             return stake >= masterThresold;
         }
 
@@ -1552,7 +1542,7 @@ namespace Phantasma.Blockchain
                 return -1;
             }
 
-            var result = (int)RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetIndexOfValidator), address).AsNumber();
+            var result = (int)RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetIndexOfValidator), address).AsNumber();
             return result;
         }
 
@@ -1570,7 +1560,7 @@ namespace Phantasma.Blockchain
 
             Throw.If(index < 0, "invalid validator index");
 
-            var result = (ValidatorEntry) RootChain.InvokeContract(Nexus.ValidatorContractName, nameof(ValidatorContract.GetValidatorByIndex), (BigInteger)index).ToObject();
+            var result = (ValidatorEntry) RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorByIndex), (BigInteger)index).ToObject();
             return result;
         }
         #endregion

@@ -67,7 +67,7 @@ namespace Phantasma.Contracts
 
         public void DepositTokens(Address from, string symbol, BigInteger amount)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "address must be user address");
 
             Runtime.Expect(IsSupportedToken(symbol), "token is unsupported");
@@ -143,7 +143,7 @@ namespace Phantasma.Contracts
 
         public void SwapTokens(Address from, string fromSymbol, string toSymbol, BigInteger amount)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "address must be user address");
             Runtime.Expect(amount > 0, "invalid amount");
 

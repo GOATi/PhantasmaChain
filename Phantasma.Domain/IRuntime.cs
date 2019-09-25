@@ -44,7 +44,7 @@ namespace Phantasma.Domain
         IChain GetChainByName(string name);
         int GetIndexOfChain(string name);
 
-        IChain GetChainParent(string);
+        IChain GetChainParent(string name);
 
         void Log(string description);
         void Throw(string description);
@@ -60,6 +60,7 @@ namespace Phantasma.Domain
 
         Address GetValidatorForBlock(IChain chain, Hash hash);
         ValidatorEntry GetValidatorByIndex(int index);
+        ValidatorEntry[] GetValidators();
         bool IsPrimaryValidator(Address address);
         bool IsSecondaryValidator(Address address);
         int GetPrimaryValidatorCount();

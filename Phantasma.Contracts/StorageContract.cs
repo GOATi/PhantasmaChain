@@ -34,7 +34,7 @@ namespace Phantasma.Contracts
 
         public void UploadFile(Address from, string name, BigInteger contentSize, byte[] contentMerkle, ArchiveFlags flags, byte[] key)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(from.IsUser, "address must be user address");
             Runtime.Expect(contentSize >= DomainSettings.ArchiveMinSize, "file too small");
             Runtime.Expect(contentSize <= DomainSettings.ArchiveMaxSize, "file too big");
@@ -66,8 +66,7 @@ namespace Phantasma.Contracts
 
         public void DeleteFile(Address from, string name)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
-            //Runtime.Expect(_storageMap.ContainsKey<Address>(from), "no files available for address");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             var list = _storageMap.Get<Address, StorageList>(from);
             var count = list.Count();

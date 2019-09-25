@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
@@ -7,19 +8,17 @@ using Phantasma.Blockchain.Plugins;
 using Phantasma.Cryptography;
 using Phantasma.Numerics;
 using Phantasma.Core;
-using Phantasma.Blockchain.Contracts.Native;
 using Phantasma.Blockchain.Contracts;
 using Phantasma.VM;
 using Phantasma.Storage;
 using Phantasma.Storage.Context;
 using Phantasma.Blockchain.Tokens;
-using Phantasma.VM.Contracts;
 using Phantasma.Network.P2P;
 using Phantasma.Core.Types;
 using Phantasma.Pay;
 using Phantasma.Core.Utils;
-using System.Text;
 using Phantasma.Domain;
+using Phantasma.Contracts;
 
 namespace Phantasma.API
 {
@@ -325,13 +324,13 @@ namespace Phantasma.API
             var tokenInfo = Nexus.GetTokenInfo(tokenSymbol);
             var currentSupply = Nexus.GetTokenSupply(Nexus.RootChain.Storage, tokenSymbol);
 
-            var metadata = (Metadata[])Nexus.RootChain.InvokeContract(Nexus.TokenContractName, nameof(TokenContract.GetMetadataList), tokenInfo.Symbol).ToObject();
+            /*var metadata = (Metadata[])Nexus.RootChain.InvokeContract(Nexus.TokenContractName, nameof(TokenContract.GetMetadataList), tokenInfo.Symbol).ToObject();
             var metadataResults = metadata.Select(x => new MetadataResult
             {
                 key = x.key,
                 value = x.value
             }
-            );
+            );*/
 
             return new TokenResult
             {
@@ -343,7 +342,7 @@ namespace Phantasma.API
                 flags = tokenInfo.Flags.ToString(),//.Split(',').Select(x => x.Trim()).ToArray(),
                 platform = tokenInfo.Platform,
                 hash = tokenInfo.Hash.ToString(),
-                metadata = metadataResults.ToArray()
+                metadata = new MetadataResult[0]// metadataResults.ToArray()
             };
         }
 
@@ -1122,7 +1121,7 @@ namespace Phantasma.API
 
             var info = Nexus.GetNFT(symbol, ID);
 
-            var chain = Nexus.FindChainByAddress(info.CurrentChain);
+            var chain = Nexus.FindChainByName(info.CurrentChain);
             bool forSale;
 
             if (chain != null && chain.HasContract("market"))
@@ -1135,10 +1134,10 @@ namespace Phantasma.API
             }
 
 
-            return new TokenDataResult() { chainAddress = info.CurrentChain.Text, ownerAddress = info.CurrentOwner.Text, ID = ID.ToString(), rom = Base16.Encode(info.ROM), ram = Base16.Encode(info.RAM) };
+            return new TokenDataResult() { chainAddress = info.CurrentChain, ownerAddress = info.CurrentOwner.Text, ID = ID.ToString(), rom = Base16.Encode(info.ROM), ram = Base16.Encode(info.RAM) };
         }
 
-        [APIInfo(typeof(AppResult[]), "Returns an array of apps deployed in Phantasma.", false, 10)]
+/*        [APIInfo(typeof(AppResult[]), "Returns an array of apps deployed in Phantasma.", false, 10)]
         public IAPIResult GetApps()
         {
             var appList = new List<object>();
@@ -1160,7 +1159,7 @@ namespace Phantasma.API
             }
 
             return new ArrayResult() { values = appList.ToArray() };
-        }
+        }*/
 
         [APIInfo(typeof(TransactionResult[]), "Returns last X transactions of given token.", true)]
         [APIFailCase("token symbol is invalid", "43242342")]
@@ -1421,7 +1420,7 @@ namespace Phantasma.API
                 size = (uint)archive.Size,
                 flags = archive.Flags.ToString(),
                 key = Base16.Encode(archive.Key),
-                blockCount = (int) archive.BlockCount,
+                blockCount = (int) archive.GetBlockCount(),
                 metadata = new string[0]// archive.Metadata.Select(x => $"{x.Key}={x.Value}").ToArray()
             };
         }
@@ -1442,7 +1441,8 @@ namespace Phantasma.API
                 return new ErrorResult() { error = "archive not found" };
             }
 
-            if (blockIndex < 0 || blockIndex >= archive.BlockCount)
+            var blockCount = archive.GetBlockCount();
+            if (blockIndex < 0 || blockIndex >= blockCount)
             {
                 return new ErrorResult() { error = "invalid block index" };
             }
@@ -1656,12 +1656,12 @@ namespace Phantasma.API
                 return new ErrorResult { error = "invalid address" };
             }
 
-            if (!address.IsInterop && platform == Nexus.PlatformName)
+            if (!address.IsInterop && platform == DomainSettings.PlatformName)
             {
                 return new ErrorResult { error = "must be interop address" };
             }
             else
-            if (address.IsInterop && platform != Nexus.PlatformName)
+            if (address.IsInterop && platform != DomainSettings.PlatformName)
             {
                 return new ErrorResult { error = "cannot be interop address" };
             }

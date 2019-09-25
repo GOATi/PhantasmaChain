@@ -154,7 +154,7 @@ namespace Phantasma.Contracts
 
         public BigInteger GetMasterRewards(Address from)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(IsMaster(from), "invalid master");
 
             var thisClaimDate = GetMaster(from).claimDate;
@@ -170,7 +170,7 @@ namespace Phantasma.Contracts
         // migrates the full stake from one address to other
         public void Migrate(Address from, Address to)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(to.IsUser, "destination must be user address");
 
             var targetStake = _stakes.Get<Address, EnergyAction>(to);
@@ -217,7 +217,7 @@ namespace Phantasma.Contracts
         {
             Runtime.Expect(_masterClaimCount < 12 * 4, "no more claims available"); // 4 years
 
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
             Runtime.Expect(IsMaster(from), "invalid master");
 
             var thisClaimDate = GetMaster(from).claimDate;
@@ -268,7 +268,7 @@ namespace Phantasma.Contracts
         public void Stake(Address from, BigInteger stakeAmount)
         {
             Runtime.Expect(stakeAmount >= MinimumValidStake, "invalid amount");
-            Runtime.Expect(IsWitness(from), "witness failed");
+            Runtime.Expect(Runtime.IsWitness(from), "witness failed");
 
             var balance = Runtime.GetBalance(DomainSettings.StakingTokenSymbol, from);
 
@@ -312,7 +312,7 @@ namespace Phantasma.Contracts
 
         public BigInteger Unstake(Address from, BigInteger unstakeAmount)
         {
-            Runtime.Expect(IsWitness(from), "witness failed");
+            Runtime.Expect(Runtime.IsWitness(from), "witness failed");
             Runtime.Expect(unstakeAmount >= MinimumValidStake, "invalid amount");
 
             if (!_stakes.ContainsKey<Address>(from))
@@ -490,7 +490,7 @@ namespace Phantasma.Contracts
 
         public void Claim(Address from, Address stakeAddress)
         {
-            Runtime.Expect(IsWitness(from), "witness failed");
+            Runtime.Expect(Runtime.IsWitness(from), "witness failed");
 
             var unclaimedAmount = GetUnclaimed(stakeAddress);
 
@@ -593,7 +593,7 @@ namespace Phantasma.Contracts
 
         public void ClearProxies(Address from)
         {
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             var stakersList = _proxyStakersMap.Get<Address, StorageList>(from);
             var count = stakersList.Count();
@@ -616,7 +616,7 @@ namespace Phantasma.Contracts
             Runtime.Expect(percentage > 0, "invalid percentage");
             Runtime.Expect(percentage <= 100, "invalid percentage");
             Runtime.Expect(from != to, "invalid proxy address");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(!to.IsNull, "destination cannot be null address");
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
@@ -663,7 +663,7 @@ namespace Phantasma.Contracts
         public void RemoveProxy(Address from, Address to)
         {
             Runtime.Expect(from != to, "invalid proxy address");
-            Runtime.Expect(IsWitness(from), "invalid witness");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
 
             Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
 

@@ -1,4 +1,5 @@
-﻿using Phantasma.Core;
+﻿using Phantasma.Contracts;
+using Phantasma.Core;
 using Phantasma.Cryptography;
 
 namespace Phantasma.Blockchain.Contracts

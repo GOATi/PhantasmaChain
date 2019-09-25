@@ -8,6 +8,7 @@ using Phantasma.Storage.Context;
 using Phantasma.Storage;
 using Phantasma.Blockchain.Tokens;
 using Phantasma.Domain;
+using Phantasma.Contracts;
 
 namespace Phantasma.Blockchain.Contracts
 {
@@ -41,6 +42,17 @@ namespace Phantasma.Blockchain.Contracts
         private BigInteger seed;
 
         public BigInteger MinimumFee;
+
+
+        public bool IsTrigger => DelayPayment;
+
+        INexus IRuntime.Nexus => throw new NotImplementedException();
+
+        IChain IRuntime.Chain => throw new NotImplementedException();
+
+        ITransaction IRuntime.Transaction => throw new NotImplementedException();
+
+        public StorageContext Storage => throw new NotImplementedException();
 
         public RuntimeVM(byte[] script, Chain chain, Timestamp time, Transaction transaction, StorageChangeSetContext changeSet, OracleReader oracle, bool readOnlyMode, bool delayPayment = false) : base(script)
         {
@@ -83,16 +95,6 @@ namespace Phantasma.Blockchain.Contracts
 
             Chain.RegisterExtCalls(this);
         }
-
-        public bool IsTrigger => DelayPayment;
-
-        INexus IRuntime.Nexus => throw new NotImplementedException();
-
-        IChain IRuntime.Chain => throw new NotImplementedException();
-
-        ITransaction IRuntime.Transaction => throw new NotImplementedException();
-
-        public StorageContext Storage => throw new NotImplementedException();
 
         public override string ToString()
         {
@@ -151,7 +153,7 @@ namespace Phantasma.Blockchain.Contracts
 
         public override ExecutionContext LoadContext(string contextName)
         {
-            if (isBlockOperation && Nexus.HasGenesis && contextName != Nexus.TokenContractName)
+            if (isBlockOperation && Nexus.HasGenesis)
             {
                 throw new ChainException($"{contextName} context not available in block operations");
             }
@@ -205,7 +207,8 @@ namespace Phantasma.Blockchain.Contracts
             {
                 case EventKind.GasEscrow:
                     {
-                        Expect(contract == Nexus.GasContractName, $"event kind only in {Nexus.GasContractName} contract");
+                        var gasContractName = NativeContractKind.Gas.GetName();
+                        Expect(contract == gasContractName, $"event kind only in {gasContractName} contract");
 
                         var gasInfo = Serialization.Unserialize<GasEventData>(bytes);
                         Expect(gasInfo.price >= this.MinimumFee, "gas fee is too low");
@@ -217,7 +220,8 @@ namespace Phantasma.Blockchain.Contracts
 
                 case EventKind.GasPayment:
                     {
-                        Expect(contract == Nexus.GasContractName, $"event kind only in {Nexus.GasContractName} contract");
+                        var gasContractName = NativeContractKind.Gas.GetName();
+                        Expect(contract == gasContractName, $"event kind only in {gasContractName} contract");
 
                         var gasInfo = Serialization.Unserialize<GasEventData>(bytes);
                         this.PaidGas += gasInfo.amount;
@@ -231,51 +235,78 @@ namespace Phantasma.Blockchain.Contracts
                     }
 
                 case EventKind.GasLoan:
-                    Expect(contract == Nexus.GasContractName, $"event kind only in {Nexus.GasContractName} contract");
-                    break;
+                    {
+                        var gasContractName = NativeContractKind.Gas.GetName();
+                          Expect(contract == gasContractName, $"event kind only in {gasContractName} contract");
+                      break;
+                  }
 
                 case EventKind.BlockCreate:
                 case EventKind.BlockClose:
-                    Expect(contract == Nexus.BlockContractName, $"event kind only in {Nexus.BlockContractName} contract");
+                    {
+                        var blockContractName = NativeContractKind.Block.GetName();
+                        Expect(contract == blockContractName, $"event kind only in {blockContractName} contract");
 
-                    isBlockOperation = true;
-                    UsedGas = 0;
-                    break;
+                        isBlockOperation = true;
+                        UsedGas = 0;
+                        break;
+                    }
 
                 case EventKind.ValidatorSwitch:
-                    Expect(contract == Nexus.BlockContractName, $"event kind only in {Nexus.BlockContractName} contract");
-                    break;
+                    {
+                        var blockContractName = NativeContractKind.Block.GetName();
+                        Expect(contract == blockContractName, $"event kind only in {blockContractName} contract");
+                        break;
+                    }
 
                 case EventKind.PollCreated:
                 case EventKind.PollClosed:
                 case EventKind.PollVote:
-                    Expect(contract == Nexus.ConsensusContractName, $"event kind only in {Nexus.ConsensusContractName} contract");
-                    break;
+                    {
+                        var consensusContractName = NativeContractKind.Consensus.GetName();
+                        Expect(contract == consensusContractName, $"event kind only in {consensusContractName} contract");
+                        break;
+                    }
 
                 case EventKind.ChainCreate:
                 case EventKind.TokenCreate:
                 case EventKind.FeedCreate:
-                    Expect(contract == Nexus.NexusContractName, $"event kind only in {Nexus.NexusContractName} contract");
-                    break;
+                    {
+                        var NexusContractName = NativeContractKind.Nexus.GetName();
+                        Expect(contract == NexusContractName, $"event kind only in {NexusContractName} contract");
+                        break;
+                    }
 
                 case EventKind.FileCreate:
                 case EventKind.FileDelete:
-                    Expect(contract == Nexus.StorageContractName, $"event kind only in {Nexus.StorageContractName } contract");
-                    break;
+                    {
+                        var storageContractName = NativeContractKind.Storage.GetName();
+                        Expect(contract == storageContractName, $"event kind only in {storageContractName} contract");
+                        break;
+                    }
 
                 case EventKind.ValidatorAdd:
                 case EventKind.ValidatorRemove:
-                    Expect(contract == Nexus.ValidatorContractName, $"event kind only in {Nexus.ValidatorContractName} contract");
-                    break;
+                    {
+                        var validatorContractName = NativeContractKind.Validator.GetName();
+                        Expect(contract == validatorContractName, $"event kind only in {validatorContractName} contract");
+                        break;
+                    }
 
                 case EventKind.BrokerRequest:
-                    Expect(contract == Nexus.InteropContractName, $"event kind only in {Nexus.InteropContractName} contract");
-                    break;
+                    {
+                        var interopContractName = NativeContractKind.Interop.GetName();
+                        Expect(contract == interopContractName, $"event kind only in {interopContractName} contract");
+                        break;
+                    }
 
                 case EventKind.ValueCreate:
                 case EventKind.ValueUpdate:
-                    Expect(contract == Nexus.GovernanceContractName, $"event kind only in {Nexus.GovernanceContractName} contract");
-                    break;
+                    {
+                        var governanceContractName = NativeContractKind.Governance.GetName();
+                        Expect(contract == governanceContractName, $"event kind only in {governanceContractName} contract");
+                        break;
+                    }
             }
 
             var evt = new Event(kind, address, contract, bytes);
@@ -371,14 +402,14 @@ namespace Phantasma.Blockchain.Contracts
         // returns value in FIAT token
         public BigInteger GetTokenPrice(string symbol)
         {
-            if (symbol == Nexus.FiatTokenSymbol)
+            if (symbol == DomainSettings.FiatTokenSymbol)
             {
-                return UnitConversion.GetUnitValue(Nexus.FiatTokenDecimals);
+                return UnitConversion.GetUnitValue(DomainSettings.FiatTokenDecimals);
             }
 
-            if (symbol == Nexus.FuelTokenSymbol)
+            if (symbol == DomainSettings.FuelTokenSymbol)
             {
-                var result = GetTokenPrice(Nexus.StakingTokenSymbol);
+                var result = GetTokenPrice(DomainSettings.StakingTokenSymbol);
                 result /= 5;
                 return result;
             }
@@ -406,11 +437,11 @@ namespace Phantasma.Blockchain.Contracts
             var quoteToken = Nexus.GetTokenInfo(quoteSymbol);
 
             result = basePrice * amount;
-            result = UnitConversion.ConvertDecimals(result, baseToken.Decimals, Nexus.FiatTokenDecimals);
+            result = UnitConversion.ConvertDecimals(result, baseToken.Decimals, DomainSettings.FiatTokenDecimals);
 
             result /= quotePrice;
 
-            result = UnitConversion.ConvertDecimals(result, Nexus.FiatTokenDecimals, quoteToken.Decimals);
+            result = UnitConversion.ConvertDecimals(result, DomainSettings.FiatTokenDecimals, quoteToken.Decimals);
 
             return result;
         }
@@ -456,7 +487,7 @@ namespace Phantasma.Blockchain.Contracts
         // fetches a chain-governed value
         public BigInteger GetGovernanceValue(string name)
         {
-            var value = Nexus.RootChain.InvokeContract(Nexus.GovernanceContractName, "GetValue", name).AsNumber();
+            var value = Nexus.RootChain.InvokeContract(NativeContractKind.Governance.GetName(), nameof(GovernanceContract.GetValue), name).AsNumber();
             return value;
         }
 
@@ -704,7 +735,28 @@ namespace Phantasma.Blockchain.Contracts
 
         public bool IsWitness(Address address)
         {
-            throw new NotImplementedException();
+            /*if (address == this.Runtime.Chain.Address || address == this.Address)
+            {
+                var frame = Runtime.frames.Skip(1).FirstOrDefault();
+                return frame != null && frame.Context.Admin;
+            }*/
+
+            if (address.IsInterop)
+            {
+                return false;
+            }
+
+            if (Transaction == null)
+            {
+                return false;
+            }
+
+            if (address.IsUser && this.HasAddressScript(address))
+            {
+                return this.InvokeTriggerOnAccount(address, AccountTrigger.OnWitness, address);
+            }
+
+            return Transaction.IsSignedBy(address);
         }
 
         public BigInteger[] GetOwnerships(string symbol, Address address)
@@ -803,6 +855,16 @@ namespace Phantasma.Blockchain.Contracts
         }
 
         public byte[] GetAddressScript(Address from)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IChain GetChainParent(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValidatorEntry[] GetValidators()
         {
             throw new NotImplementedException();
         }

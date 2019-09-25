@@ -4,7 +4,6 @@ using Phantasma.Blockchain.Contracts;
 using Phantasma.Cryptography;
 using Phantasma.Core;
 using Phantasma.VM;
-using Phantasma.VM.Contracts;
 using Phantasma.Core.Types;
 using Phantasma.Numerics;
 using Phantasma.Domain;
@@ -402,7 +401,7 @@ namespace Phantasma.Blockchain
                 }
                 var amount = temp.AsNumber();
 
-                var success = vm.TransferTokens(vm, symbol, source, destination, amount);
+                var success = vm.TransferTokens(symbol, source, destination, amount);
 
                 var result = new VMObject();
                 result.SetValue(success);
