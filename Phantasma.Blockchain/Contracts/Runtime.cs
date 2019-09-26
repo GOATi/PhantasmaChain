@@ -110,7 +110,8 @@ namespace Phantasma.Blockchain.Contracts
 
         public override ExecutionState ExecuteInterop(string method)
         {
-            Expect(!isBlockOperation, "no interops available in block operations");
+            // TODO blacklist some interops here
+            //Expect(!isBlockOperation, "no interops available in block operations");
 
             if (handlers.ContainsKey(method))
             {
@@ -487,12 +488,14 @@ namespace Phantasma.Blockchain.Contracts
         // fetches a chain-governed value
         public BigInteger GetGovernanceValue(string name)
         {
-            var value = Nexus.RootChain.InvokeContract(NativeContractKind.Governance.GetName(), nameof(GovernanceContract.GetValue), name).AsNumber();
+            var value = Nexus.RootChain.InvokeContract(this.Storage, NativeContractKind.Governance.GetName(), nameof(GovernanceContract.GetValue), name).AsNumber();
             return value;
         }
 
         public BigInteger GetBalance(string tokenSymbol, Address address)
         {
+            Expect(TokenExists(tokenSymbol), "invalid token");
+
             var tokenInfo = Nexus.GetTokenInfo(tokenSymbol);
             if (tokenInfo.Flags.HasFlag(TokenFlags.Fungible))
             {
@@ -692,17 +695,17 @@ namespace Phantasma.Blockchain.Contracts
 
         public Address LookUpName(string name)
         {
-            return Nexus.LookUpName(name);
+            return Nexus.LookUpName(RootStorage, name);
         }
 
         public bool HasAddressScript(Address from)
         {
-            return Nexus.HasAddressScript(from);
+            return Nexus.HasAddressScript(RootStorage, from);
         }
 
         public byte[] GetAddressScript(Address from)
         {
-            return Nexus.LookUpAddressScript(from);
+            return Nexus.LookUpAddressScript(RootStorage, from);
         }
 
         // TODO optimize this
@@ -717,49 +720,51 @@ namespace Phantasma.Blockchain.Contracts
             return Chain.GetValidatorForBlock(hash);
         }
 
+        public StorageContext RootStorage => this.Chain.IsRoot ? this.Storage : this.Nexus.RootChain.Storage;
+
         public ValidatorEntry GetValidatorByIndex(int index)
         {
-            return Nexus.GetValidatorByIndex(index);
+            return Nexus.GetValidatorByIndex(RootStorage, index);
         }
 
         public ValidatorEntry[] GetValidators()
         {
-            return Nexus.GetValidators();
+            return Nexus.GetValidators(RootStorage);
         }
 
         public bool IsPrimaryValidator(Address address)
         {
-            return Nexus.IsPrimaryValidator(address);
+            return Nexus.IsPrimaryValidator(RootStorage, address);
         }
 
         public bool IsSecondaryValidator(Address address)
         {
-            return Nexus.IsSecondaryValidator(address);
+            return Nexus.IsSecondaryValidator(RootStorage, address);
         }
 
         public bool IsKnownValidator(Address address)
         {
-            return Nexus.IsKnownValidator(address);
+            return Nexus.IsKnownValidator(RootStorage, address);
         }
 
         public int GetPrimaryValidatorCount()
         {
-            return Nexus.GetPrimaryValidatorCount();
+            return Nexus.GetPrimaryValidatorCount(RootStorage);
         }
 
         public int GetSecondaryValidatorCount()
         {
-            return Nexus.GetSecondaryValidatorCount();
+            return Nexus.GetSecondaryValidatorCount(RootStorage);
         }
 
         public bool IsStakeMaster(Address address)
         {
-            return Nexus.IsStakeMaster(address);
+            return Nexus.IsStakeMaster(RootStorage, address);
         }
 
         public BigInteger GetStake(Address address)
         {
-            return Nexus.GetStakeFromAddress(address);
+            return Nexus.GetStakeFromAddress(RootStorage, address);
         }
 
         public BigInteger GenerateUID()
@@ -805,7 +810,134 @@ namespace Phantasma.Blockchain.Contracts
 
         public bool MintTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
         {
-            return Nexus.MintTokens(this, symbol, target, amount, isSettlement);
+            var Runtime = this;
+            Runtime.Expect(IsWitness(target), "invalid witness");
+
+            Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
+
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = Runtime.GetToken(symbol);
+            Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
+            Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fiat), "token can't be fiat");
+
+            Runtime.Expect(!target.IsInterop, "destination cannot be interop address");
+
+            return Nexus.MintTokens(this, symbol, target, amount, false);
+        }
+
+        public bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
+        {
+            var Runtime = this;
+            Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
+            Runtime.Expect(IsWitness(target), "invalid witness");
+
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = Runtime.GetToken(symbol);
+            Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
+            Runtime.Expect(tokenInfo.IsBurnable(), "token must be burnable");
+            Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fiat), "token can't be fiat");
+
+            return Nexus.BurnTokens(this, symbol, target, amount, false);
+        }
+
+        public bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount)
+        {
+            var Runtime = this;
+            Runtime.Expect(amount > 0, "amount must be positive and greater than zero");
+            Runtime.Expect(source != destination, "source and destination must be different");
+            Runtime.Expect(IsWitness(source), "invalid witness");
+            Runtime.Expect(!Runtime.IsTrigger, "not allowed inside a trigger");
+
+            if (destination.IsInterop)
+            {
+                Runtime.Expect(Runtime.Chain.IsRoot, "interop transfers only allowed in main chain");
+                Runtime.CallContext("interop", "WithdrawTokens", source, destination, symbol, amount);
+                return true;
+            }
+
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = Runtime.GetToken(symbol);
+            Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "token must be fungible");
+            Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Transferable), "token must be transferable");
+
+            return Nexus.TransferTokens(this, symbol, source, destination, amount);
+        }
+
+        public bool SendTokens(Address targetChainAddress, Address from, Address to, string symbol, BigInteger amount)
+        {
+            var Runtime = this;
+            Runtime.Expect(IsWitness(from), "invalid witness");
+
+            Runtime.Expect(IsAddressOfParentChain(targetChainAddress) || IsAddressOfChildChain(targetChainAddress), "target must be parent or child chain");
+
+            Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
+
+            var targetChain = Runtime.GetChainByAddress(targetChainAddress);
+
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = Runtime.GetToken(symbol);
+            Runtime.Expect(tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "must be fungible token");
+
+            /*if (tokenInfo.IsCapped())
+            {
+                var sourceSupplies = new SupplySheet(symbol, this.Runtime.Chain, Runtime.Nexus);
+                var targetSupplies = new SupplySheet(symbol, targetChain, Runtime.Nexus);
+
+                if (IsAddressOfParentChain(targetChainAddress))
+                {
+                    Runtime.Expect(sourceSupplies.MoveToParent(this.Storage, amount), "source supply check failed");
+                }
+                else // child chain
+                {
+                    Runtime.Expect(sourceSupplies.MoveToChild(this.Storage, targetChain.Name, amount), "source supply check failed");
+                }
+            }*/
+
+            Runtime.Expect(Runtime.BurnTokens(symbol, from, amount, true), "burn failed");
+
+            Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = amount, chainAddress = Runtime.Chain.Address });
+            Runtime.Notify(EventKind.TokenEscrow, to, new TokenEventData() { symbol = symbol, value = amount, chainAddress = targetChainAddress });
+
+            return true;
+        }
+
+        public bool SendToken(Address targetChainAddress, Address from, Address to, string symbol, BigInteger tokenID)
+        {
+            var Runtime = this;
+            Runtime.Expect(IsWitness(from), "invalid witness");
+
+            Runtime.Expect(IsAddressOfParentChain(targetChainAddress) || IsAddressOfChildChain(targetChainAddress), "source must be parent or child chain");
+
+            Runtime.Expect(!to.IsInterop, "destination cannot be interop address");
+
+            var targetChain = Runtime.GetChainByAddress(targetChainAddress);
+
+            Runtime.Expect(Runtime.TokenExists(symbol), "invalid token");
+            var tokenInfo = Runtime.GetToken(symbol);
+            Runtime.Expect(!tokenInfo.Flags.HasFlag(TokenFlags.Fungible), "must be non-fungible token");
+
+            /*
+            if (tokenInfo.IsCapped())
+            {
+                var supplies = new SupplySheet(symbol, this.Runtime.Chain, Runtime.Nexus);
+
+                BigInteger amount = 1;
+
+                if (IsAddressOfParentChain(targetChainAddress))
+                {
+                    Runtime.Expect(supplies.MoveToParent(this.Storage, amount), "source supply check failed");
+                }
+                else // child chain
+                {
+                    Runtime.Expect(supplies.MoveToChild(this.Storage, this.Runtime.Chain.Name, amount), "source supply check failed");
+                }
+            }*/
+
+            Runtime.Expect(Runtime.TransferToken(symbol, from, targetChainAddress, tokenID), "take token failed");
+
+            Runtime.Notify(EventKind.TokenBurn, from, new TokenEventData() { symbol = symbol, value = tokenID, chainAddress = Runtime.Chain.Address });
+            Runtime.Notify(EventKind.TokenEscrow, to, new TokenEventData() { symbol = symbol, value = tokenID, chainAddress = targetChainAddress });
+            return true;
         }
 
         public bool MintToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
@@ -813,19 +945,9 @@ namespace Phantasma.Blockchain.Contracts
             return Nexus.MintToken(this, symbol, target, tokenID, isSettlement);
         }
 
-        public bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement)
-        {
-            return Nexus.BurnTokens(this, symbol, target, amount, isSettlement);
-        }
-
         public bool BurnToken(string symbol, Address target, BigInteger tokenID, bool isSettlement)
         {
             return Nexus.BurnToken(this, symbol, target, tokenID, isSettlement);
-        }
-
-        public bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount)
-        {
-            return Nexus.TransferTokens(this, symbol, source, destination, amount);
         }
 
         public bool TransferToken(string symbol, Address source, Address destination, BigInteger tokenID)
@@ -851,6 +973,24 @@ namespace Phantasma.Blockchain.Contracts
         public TokenContent GetNFT(string tokenSymbol, BigInteger tokenID)
         {
             return Nexus.GetNFT(tokenSymbol, tokenID);
+        }
+
+        public bool IsAddressOfParentChain(Address address)
+        {
+            if (this.Chain.IsRoot)
+            {
+                return false;
+            }
+
+            var parentChain = this.GetChainParent(this.Chain.Name);
+            return address == parentChain.Address;
+        }
+
+        public bool IsAddressOfChildChain(Address address)
+        {
+            var targetChain = GetChainByAddress(address);
+            var parentChain = GetChainParent(targetChain.Name);
+            return parentChain.Name == this.Chain.Name;
         }
 
         public byte[] ReadOracle(string URL)

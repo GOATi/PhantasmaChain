@@ -514,66 +514,6 @@ namespace Phantasma.Blockchain
             return null;
         }
 
-        public VMObject InvokeContract(NativeContractKind nativeContract, string methodName, Timestamp time, params object[] args)
-        {
-            return InvokeContract(nativeContract.GetName(), methodName, time, args);
-        }
-
-        public VMObject InvokeContract(NativeContractKind nativeContract, string methodName, params object[] args)
-        {
-            return InvokeContract(nativeContract.GetName(), methodName, Timestamp.Now, args);
-        }
-
-        public VMObject InvokeContract(string contractName, string methodName, params object[] args)
-        {
-            return InvokeContract(contractName, methodName, Timestamp.Now, args);
-        }
-
-        public VMObject InvokeContract(string contractName, string methodName, Timestamp time, params object[] args)
-        {
-            var contract = Nexus.AllocContract(contractName);
-            Throw.IfNull(contract, nameof(contract));
-
-            var script = ScriptUtils.BeginScript().CallContract(contractName, methodName, args).EndScript();
-            
-            var result = InvokeScript(script, time);
-
-            if (result == null)
-            {
-                throw new ChainException($"Invocation of method '{methodName}' of contract '{contractName}' failed");
-            }
-
-            return result;
-        }
-
-        public VMObject InvokeScript(byte[] script)
-        {
-            return InvokeScript(script, Timestamp.Now);
-        }
-
-        public VMObject InvokeScript(byte[] script, Timestamp time)
-        {
-            var oracle = Nexus.CreateOracleReader();
-            var changeSet = new StorageChangeSetContext(this.Storage);
-            var vm = new RuntimeVM(script, this, time, null, changeSet, oracle, true);
-
-            var state = vm.Execute();
-
-            if (state != ExecutionState.Halt)
-            {
-                return null;
-            }
-
-            if (vm.Stack.Count == 0)
-            {
-                throw new ChainException($"No result, vm stack is empty");
-            }
-
-            var result = vm.Stack.Pop();
-
-            return result;
-        }
-
         public BigInteger GenerateUID(StorageContext storage)
         {
             var key = Encoding.ASCII.GetBytes("_uid");
@@ -636,9 +576,9 @@ namespace Phantasma.Blockchain
         #endregion
 
         #region validators
-        public Address GetCurrentValidator()
+        public Address GetCurrentValidator(StorageContext storage)
         {
-            return InvokeContract(NativeContractKind.Block.GetName(), nameof(BlockContract.GetCurrentValidator)).AsAddress();
+            return InvokeContract(storage, NativeContractKind.Block.GetName(), nameof(BlockContract.GetCurrentValidator)).AsAddress();
         }
 
         public Address GetValidatorForBlock(Hash hash)
@@ -665,6 +605,68 @@ namespace Phantasma.Blockchain
             }
 
             return Address.Null;
+        }
+        #endregion
+
+        #region invokes
+        public VMObject InvokeContract(StorageContext storage, NativeContractKind nativeContract, string methodName, Timestamp time, params object[] args)
+        {
+            return this.InvokeContract(storage, nativeContract.GetName(), methodName, time, args);
+        }
+
+        public VMObject InvokeContract(StorageContext storage, NativeContractKind nativeContract, string methodName, params object[] args)
+        {
+            return this.InvokeContract(storage, nativeContract.GetName(), methodName, Timestamp.Now, args);
+        }
+
+        public VMObject InvokeContract(StorageContext storage, string contractName, string methodName, params object[] args)
+        {
+            return this.InvokeContract(storage, contractName, methodName, Timestamp.Now, args);
+        }
+
+        public VMObject InvokeContract(StorageContext storage, string contractName, string methodName, Timestamp time, params object[] args)
+        {
+            var contract = this.Nexus.AllocContract(contractName);
+            Throw.IfNull(contract, nameof(contract));
+
+            var script = ScriptUtils.BeginScript().CallContract(contractName, methodName, args).EndScript();
+
+            var result = this.InvokeScript(storage, script, time);
+
+            if (result == null)
+            {
+                throw new ChainException($"Invocation of method '{methodName}' of contract '{contractName}' failed");
+            }
+
+            return result;
+        }
+
+        public VMObject InvokeScript(StorageContext storage, byte[] script)
+        {
+            return this.InvokeScript(storage, script, Timestamp.Now);
+        }
+
+        public VMObject InvokeScript(StorageContext storage, byte[] script, Timestamp time)
+        {
+            var oracle = this.Nexus.CreateOracleReader();
+            var changeSet = new StorageChangeSetContext(storage);
+            var vm = new RuntimeVM(script, this, time, null, changeSet, oracle, true);
+
+            var state = vm.Execute();
+
+            if (state != ExecutionState.Halt)
+            {
+                return null;
+            }
+
+            if (vm.Stack.Count == 0)
+            {
+                throw new ChainException($"No result, vm stack is empty");
+            }
+
+            var result = vm.Stack.Pop();
+
+            return result;
         }
         #endregion
     }

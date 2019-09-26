@@ -50,7 +50,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -79,7 +79,7 @@ namespace Phantasma.Tests
             //System.IO.File.WriteAllText(@"c:\code\bug_vm.txt", string.Join('\n', new VM.Disassembler(tx.Script).Instructions));
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
             Assert.IsTrue(simulator.Nexus.ArchiveExists(contentMerkle.Root));
@@ -125,7 +125,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -147,7 +147,7 @@ namespace Phantasma.Tests
             System.IO.File.WriteAllText(@"D:\Repos\bug_vm.txt", string.Join('\n', new VM.Disassembler(tx.Script).Instructions));
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
         }
@@ -201,7 +201,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -211,7 +211,7 @@ namespace Phantasma.Tests
 
             //-----------
             //Try partial unstake: should succeed
-            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             var stakeReduction = stakedAmount / 5;
 
             simulator.BeginBlock();
@@ -221,7 +221,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
 
             Assert.IsTrue(finalStakedAmount == initialStakedAmount - stakeReduction);
         }
@@ -275,7 +275,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -289,7 +289,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == 0);
 
@@ -306,7 +306,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(finalStakedAmount == 0);
 
         }
@@ -343,7 +343,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -365,7 +365,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -387,7 +387,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == oldSpace + contentSize + headerSize);
 
@@ -409,7 +409,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == oldSpace + contentSize + headerSize);
         }
@@ -446,7 +446,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -468,7 +468,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -484,7 +484,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == 0);
 
@@ -497,7 +497,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == oldSpace);
         }
@@ -537,7 +537,7 @@ namespace Phantasma.Tests
                     SpendGas(testUserA.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUserA.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUserA.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUserA.Address);
@@ -554,7 +554,7 @@ namespace Phantasma.Tests
                     SpendGas(testUserB.Address).EndScript());
             simulator.EndBlock();
 
-            stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUserB.Address).AsNumber();
+            stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUserB.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUserB.Address);
@@ -576,7 +576,7 @@ namespace Phantasma.Tests
                     SpendGas(testUserA.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUserA.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUserA.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -591,7 +591,7 @@ namespace Phantasma.Tests
                     SpendGas(testUserB.Address).EndScript());
             simulator.EndBlock();
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUserB.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUserB.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
         }
@@ -648,7 +648,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -660,7 +660,7 @@ namespace Phantasma.Tests
 
             //-----------
             //Try to unstake everything: should fail due to files still existing for this user
-            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            var initialStakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             var stakeReduction = initialStakedAmount - MinimumValidStake;
             startingSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
 
@@ -674,10 +674,10 @@ namespace Phantasma.Tests
                 simulator.EndBlock();
             });
 
-            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            var finalStakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(initialStakedAmount == finalStakedAmount);
 
-            usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == oldSpace);
         }
@@ -714,7 +714,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -739,7 +739,7 @@ namespace Phantasma.Tests
                 simulator.EndBlock();
             })
             ;
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == 0);
         }
@@ -776,7 +776,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -798,7 +798,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 
@@ -858,7 +858,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
+            BigInteger stakedAmount = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Stake, "GetStake", testUser.Address).AsNumber();
             Assert.IsTrue(stakedAmount == stakeAmount);
 
             var finalSoulBalance = simulator.Nexus.RootChain.GetTokenBalance(DomainSettings.StakingTokenSymbol, testUser.Address);
@@ -880,7 +880,7 @@ namespace Phantasma.Tests
                     SpendGas(testUser.Address).EndScript());
             simulator.EndBlock();
 
-            var usedSpace = simulator.Nexus.RootChain.InvokeContract("storage", "GetUsedSpace", testUser.Address).AsNumber();
+            var usedSpace = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "storage", "GetUsedSpace", testUser.Address).AsNumber();
 
             Assert.IsTrue(usedSpace == contentSize + headerSize);
 

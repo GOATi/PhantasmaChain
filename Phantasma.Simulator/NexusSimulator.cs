@@ -118,7 +118,7 @@ namespace Phantasma.Simulator
             var ethAddress = Phantasma.Pay.Chains.EthereumWallet.EncodeAddress(ethText);
 
             BeginBlock();
-            GenerateAppRegistration(_owner, "mystore", "https://my.store", "The future of digital content distribution!");
+            //GenerateAppRegistration(_owner, "mystore", "https://my.store", "The future of digital content distribution!");
 
             GenerateCustomTransaction(_owner, 0, () => new ScriptBuilder().AllowGas(_owner.Address, Address.Null, MinimumFee, 9999).
                 CallContract("nexus", "CreatePlatform", neoAddress, "GAS").
@@ -234,7 +234,7 @@ namespace Phantasma.Simulator
             var readyNames = new List<Address>();
             foreach (var address in pendingNames)
             {
-                var currentName = Nexus.LookUpAddressName(address);
+                var currentName = Nexus.LookUpAddressName(Nexus.RootChain.Storage, address);
                 if (currentName != Validation.ANONYMOUS)
                 {
                     readyNames.Add(address);
@@ -492,7 +492,8 @@ namespace Phantasma.Simulator
             var script = ScriptUtils.
                 BeginScript().
                 AllowGas(owner.Address, Address.Null, MinimumFee, 9999).
-                CallContract("token", "MintTokens", owner.Address, destination, symbol, amount).
+                CallContract("token", "MintTokens", owner.Address, symbol, amount).
+                TransferTokens(symbol, owner.Address, destination, amount).
                 SpendGas(owner.Address).
                 EndScript();
 
@@ -691,6 +692,7 @@ namespace Phantasma.Simulator
             return tx;
         }
 
+        /*
         public Transaction GenerateAppRegistration(KeyPair source, string name, string url, string description)
         {
             var contract = "apps";
@@ -706,7 +708,7 @@ namespace Phantasma.Simulator
             tx = MakeTransaction(source, ProofOfWork.None, chain, script);
 
             return tx;
-        }
+        }*/
 
         public Transaction GenerateSetTokenMetadata(KeyPair source, string tokenSymbol, string key, string value)
         {
@@ -876,10 +878,10 @@ namespace Phantasma.Simulator
                                         break;
                                 }
 
-                                var currentName = Nexus.LookUpAddressName(source.Address);
+                                var currentName = Nexus.LookUpAddressName(Nexus.RootChain.Storage, source.Address);
                                 if (currentName == Validation.ANONYMOUS)
                                 {
-                                    var lookup = Nexus.LookUpName(randomName);
+                                    var lookup = Nexus.LookUpName(Nexus.RootChain.Storage, randomName);
                                     if (lookup.IsNull)
                                     {
                                         Logger.Debug($"Rnd.GenerateAccount: {source.Address} => {randomName}");

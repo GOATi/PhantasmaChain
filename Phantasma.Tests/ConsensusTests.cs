@@ -87,7 +87,7 @@ namespace Phantasma.Tests
                 AddNewValidator(newValidator);
 
                 var validatorType = simulator.Nexus.RootChain
-                    .InvokeContract(NativeContractKind.Validator, nameof(ValidatorContract.GetValidatorType),
+                    .InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Validator, nameof(ValidatorContract.GetValidatorType),
                         newValidator.Address).AsEnum<ValidatorType>();
 
                 Assert.IsTrue(validatorType != Invalid);
@@ -102,7 +102,7 @@ namespace Phantasma.Tests
             Timestamp endTime = simulator.CurrentTime.AddDays(1);
             var pollName = SystemPoll + ValidatorPollTag;
 
-            var validators = (ValidatorEntry[]) simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Validator,
+            var validators = (ValidatorEntry[]) simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Validator,
                 nameof(ValidatorContract.GetValidators)).ToObject(typeof(ValidatorEntry[]));
 
             var activeValidators = validators.Where(x => x.address != Address.Null);
@@ -149,7 +149,7 @@ namespace Phantasma.Tests
             //skip until the voting is over
             simulator.TimeSkipDays(1.5);
 
-            var votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName,
+            var votingRank = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName,
                 choices[activeValidatorCount].Serialize()).AsNumber();
 
             //call SetValidator for each set validator address
@@ -159,7 +159,7 @@ namespace Phantasma.Tests
 
                 ValidatorType validatorType = i < 2 ? Primary : Secondary;
 
-                votingRank = simulator.Nexus.RootChain.InvokeContract(NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName, validatorChoice).AsNumber();
+                votingRank = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, NativeContractKind.Consensus, nameof(ConsensusContract.GetRank), pollName, validatorChoice).AsNumber();
 
                 simulator.BeginBlock();
                 var tx = simulator.GenerateCustomTransaction(owner, ProofOfWork.None, () =>

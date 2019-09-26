@@ -104,7 +104,7 @@ namespace Phantasma.Tests
                 simulator.EndBlock();
             });
 
-            var outstandingDebt = simulator.Nexus.RootChain.InvokeContract("gas", "GetLoanAmount", lender.Address).AsNumber();
+            var outstandingDebt = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "gas", "GetLoanAmount", lender.Address).AsNumber();
             Assert.IsTrue(outstandingDebt == 0);
             
         }
@@ -214,7 +214,7 @@ namespace Phantasma.Tests
             simulator.GenerateTransfer(owner, userA.Address, nexus.RootChain, DomainSettings.StakingTokenSymbol, soulAmount);
             simulator.EndBlock();
 
-            var outstandingDebt = simulator.Nexus.RootChain.InvokeContract("gas", "GetLoanAmount", userA.Address).AsNumber();
+            var outstandingDebt = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "gas", "GetLoanAmount", userA.Address).AsNumber();
 
             Assert.IsTrue(outstandingDebt > 0);
 
@@ -222,7 +222,7 @@ namespace Phantasma.Tests
             simulator.GenerateTransfer(userA, userB.Address, nexus.RootChain, DomainSettings.StakingTokenSymbol, UnitConversion.GetUnitValue(DomainSettings.StakingTokenDecimals));
             simulator.EndBlock();
 
-            outstandingDebt = simulator.Nexus.RootChain.InvokeContract("gas", "GetLoanAmount", userA.Address).AsNumber();
+            outstandingDebt = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "gas", "GetLoanAmount", userA.Address).AsNumber();
 
             Assert.IsTrue(outstandingDebt == 0);
         }
@@ -238,7 +238,7 @@ namespace Phantasma.Tests
                     EndScript());
             simulator.EndBlock();
 
-            var isLender = simulator.Nexus.RootChain.InvokeContract("gas", "IsLender", lender.Address).AsBool();
+            var isLender = simulator.Nexus.RootChain.InvokeContract(simulator.Nexus.RootChain.Storage, "gas", "IsLender", lender.Address).AsBool();
             Assert.IsTrue(isLender);
         }
 
@@ -302,10 +302,10 @@ namespace Phantasma.Tests
             var children = nexus.GetChildChainsByName(rootChain.Name);
             Assert.IsTrue(children.Any());
 
-            Assert.IsTrue(nexus.IsPrimaryValidator(owner.Address));
+            Assert.IsTrue(nexus.IsPrimaryValidator(nexus.RootChain.Storage, owner.Address));
 
             var randomKey = KeyPair.Generate();
-            Assert.IsFalse(nexus.IsPrimaryValidator(randomKey.Address));
+            Assert.IsFalse(nexus.IsPrimaryValidator(nexus.RootChain.Storage, randomKey.Address));
 
             /*var txCount = nexus.GetTotalTransactionCount();
             Assert.IsTrue(txCount > 0);*/
@@ -490,10 +490,10 @@ namespace Phantasma.Tests
             Assert.IsFalse(registerName(testUser, targetName + "!"));
             Assert.IsTrue(registerName(testUser, targetName));
 
-            var currentName = nexus.LookUpAddressName(testUser.Address);
+            var currentName = nexus.LookUpAddressName(nexus.RootChain.Storage, testUser.Address);
             Assert.IsTrue(currentName == targetName);
 
-            var someAddress = nexus.LookUpName(targetName);
+            var someAddress = nexus.LookUpName(nexus.RootChain.Storage, targetName);
             Assert.IsTrue(someAddress == testUser.Address);
 
             Assert.IsFalse(registerName(testUser, "other"));
@@ -633,7 +633,7 @@ namespace Phantasma.Tests
 
             var script = new ScriptBuilder().CallContract("swap", "GetRates", "SOUL", UnitConversion.GetUnitValue(DomainSettings.StakingTokenDecimals)).EndScript();
 
-            var result = nexus.RootChain.InvokeScript(script);
+            var result = nexus.RootChain.InvokeScript(nexus.RootChain.Storage, script);
 
             var temp = result.ToObject();
             var rates = (SwapPair[])temp;

@@ -349,7 +349,7 @@ namespace Phantasma.Blockchain
         #endregion
 
         #region NAME SERVICE
-        public Address LookUpName(string name)
+        public Address LookUpName(StorageContext storage, string name)
         { 
             if (!Validation.IsValidIdentifier(name))
             {
@@ -357,25 +357,25 @@ namespace Phantasma.Blockchain
             }
 
             var chain = RootChain;
-            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpName), name).AsAddress();
+            return chain.InvokeContract(storage, NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpName), name).AsAddress();
         }
 
-        public string LookUpAddressName(Address address)
+        public string LookUpAddressName(StorageContext storage, Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpAddress), address).AsString();
+            return chain.InvokeContract(storage, NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpAddress), address).AsString();
         }
 
-        public byte[] LookUpAddressScript(Address address)
+        public byte[] LookUpAddressScript(StorageContext storage, Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpScript), address).AsByteArray();
+            return chain.InvokeContract(storage, NativeContractKind.Account.GetName(), nameof(AccountContract.LookUpScript), address).AsByteArray();
         }
 
-        public bool HasAddressScript(Address address)
+        public bool HasAddressScript(StorageContext storage, Address address)
         {
             var chain = RootChain;
-            return chain.InvokeContract(NativeContractKind.Account.GetName(), nameof(AccountContract.HasScript), address).AsBool();
+            return chain.InvokeContract(storage, NativeContractKind.Account.GetName(), nameof(AccountContract.HasScript), address).AsBool();
         }
         #endregion
 
@@ -478,13 +478,14 @@ namespace Phantasma.Blockchain
             this._vars.Set(ChainNameMapKey + chain.Name, chain.Address.PublicKey);
             this._vars.Set(ChainAddressMapKey + chain.Address.Text, Encoding.UTF8.GetBytes(chain.Name));
             
-            if (parentChain != null)
+            if (!string.IsNullOrEmpty(parentChainName))
             {
-                this._vars.Set(ChainParentNameKey + chain.Name, Encoding.UTF8.GetBytes(parentChain.Name));
+                this._vars.Set(ChainParentNameKey + chain.Name, Encoding.UTF8.GetBytes(parentChainName));
 
-                var childrenList = GetChildrenListOfChain(parentChain.Name);
+                var childrenList = GetChildrenListOfChain(parentChainName);
                 childrenList.Add<string>(chain.Name);
 
+                var parentChain = GetChainByName(parentChainName);
                 var tokenList = this.Tokens;
                 // copy each token current supply relative to parent to the chain new
                 foreach (var tokenSymbol in tokenList)
@@ -828,6 +829,7 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
+            runtime.Notify(EventKind.TokenMint, target, new TokenEventData() { symbol = symbol, value = amount, chainAddress = runtime.Chain.Address });
             return true;
         }
 
@@ -918,6 +920,7 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
+            runtime.Notify(EventKind.TokenBurn, target, new TokenEventData() { symbol = symbol, value = amount });
             return true;
         }
 
@@ -1038,6 +1041,8 @@ namespace Phantasma.Blockchain
                 return false;
             }
 
+            runtime.Notify(EventKind.TokenSend, source, new TokenEventData() { chainAddress = runtime.Chain.Address, value = amount, symbol = symbol });
+            runtime.Notify(EventKind.TokenReceive, destination, new TokenEventData() { chainAddress = runtime.Chain.Address, value = amount, symbol = symbol });
             return true;
         }
 
@@ -1271,7 +1276,7 @@ namespace Phantasma.Blockchain
 
             sb.CallContract("block", "OpenBlock", owner.Address);
 
-            sb.CallInterop("Runtime.MintTokens", owner.Address, owner.Address, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(8863626, DomainSettings.StakingTokenDecimals));
+            sb.CallInterop("Runtime.MintTokens", owner.Address, DomainSettings.StakingTokenSymbol, UnitConversion.ToBigInteger(8863626, DomainSettings.StakingTokenDecimals));
             // requires staking token to be created previously
             // note this is a completly arbitrary number just to be able to generate energy in the genesis, better change it later
             sb.CallContract(NativeContractKind.Stake.GetName(), "Stake", owner.Address, UnitConversion.ToBigInteger(100000, DomainSettings.StakingTokenDecimals));
@@ -1366,7 +1371,9 @@ namespace Phantasma.Blockchain
 
             var contractNames = contracts.Select(x => x.GetName()).ToArray();
 
-            var rootChain = CreateChain(null, owner.Address, DomainSettings.RootChainName, null, contractNames);
+            var result = CreateChain(null, owner.Address, DomainSettings.RootChainName, null, contractNames);
+            Throw.If(!result, "failed to create root chain");
+            var rootChain = GetChainByName(DomainSettings.RootChainName);
 
             var tokenScript = new byte[0];
             CreateToken(DomainSettings.StakingTokenSymbol, DomainSettings.StakingTokenName, "neo", Hash.FromUnpaddedHex("ed07cffad18f1308db51920d99a2af60ac66a7b3"),  UnitConversion.ToBigInteger(91136374, DomainSettings.StakingTokenDecimals), DomainSettings.StakingTokenDecimals, TokenFlags.Fungible | TokenFlags.Transferable | TokenFlags.Finite | TokenFlags.Divisible | TokenFlags.Stakable | TokenFlags.External, tokenScript);
@@ -1398,15 +1405,7 @@ namespace Phantasma.Blockchain
             var genesisMessage = Encoding.UTF8.GetBytes("A Phantasma was born...");
             var block = new Block(Chain.InitialHeight, RootChainAddress, timestamp, transactions.Select(tx => tx.Hash), Hash.Null, genesisMessage);
 
-            try
-            {
-                rootChain.AddBlock(block, transactions, 1);
-            }
-            catch (Exception e)
-            {
-                _logger?.Error(e.ToString());
-                return false;
-            }
+            rootChain.AddBlock(block, transactions, 1);
 
             GenesisHash = block.Hash;
             this.HasGenesis = true;
@@ -1470,15 +1469,15 @@ namespace Phantasma.Blockchain
             throw new NotImplementedException();
         }
 
-        public ValidatorEntry[] GetValidators()
+        public ValidatorEntry[] GetValidators(StorageContext storage)
         {
-            var validators = (ValidatorEntry[])RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidators)).ToObject();
+            var validators = (ValidatorEntry[])RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidators)).ToObject();
             return validators;
         }
 
-        public int GetPrimaryValidatorCount()
+        public int GetPrimaryValidatorCount(StorageContext storage)
         {
-            var count = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
+            var count = RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
             if (count < 1)
             {
                 return 1;
@@ -1486,51 +1485,51 @@ namespace Phantasma.Blockchain
             return (int)count;
         }
 
-        public int GetSecondaryValidatorCount()
+        public int GetSecondaryValidatorCount(StorageContext storage)
         {
-            var count = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
+            var count = RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorCount), ValidatorType.Primary).AsNumber();
             return (int)count;
         }
 
-        public ValidatorType GetValidatorType(Address address)
+        public ValidatorType GetValidatorType(StorageContext storage, Address address)
         {
-            var result = RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorType), address).AsEnum<ValidatorType>();
+            var result = RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorType), address).AsEnum<ValidatorType>();
             return result;
         }
 
-        public bool IsPrimaryValidator(Address address)
+        public bool IsPrimaryValidator(StorageContext storage, Address address)
         {
-            var result = GetValidatorType(address);
+            var result = GetValidatorType(storage, address);
             return result == ValidatorType.Primary;
         }
 
-        public bool IsSecondaryValidator(Address address)
+        public bool IsSecondaryValidator(StorageContext storage, Address address)
         {
-            var result = GetValidatorType(address);
+            var result = GetValidatorType(storage, address);
             return result == ValidatorType.Secondary;
         }
 
         // this returns true for both active and waiting
-        public bool IsKnownValidator(Address address)
+        public bool IsKnownValidator(StorageContext storage, Address address)
         {
-            var result = GetValidatorType(address);
+            var result = GetValidatorType(storage, address);
             return result != ValidatorType.Invalid;
         }
 
-        public BigInteger GetStakeFromAddress(Address address)
+        public BigInteger GetStakeFromAddress(StorageContext storage, Address address)
         {
-            var result = RootChain.InvokeContract(NativeContractKind.Stake.GetName(), nameof(StakeContract.GetStake), address).AsNumber();
+            var result = RootChain.InvokeContract(storage, NativeContractKind.Stake.GetName(), nameof(StakeContract.GetStake), address).AsNumber();
             return result;
         }
 
-        public bool IsStakeMaster(Address address)
+        public bool IsStakeMaster(StorageContext storage, Address address)
         {
-            var stake = GetStakeFromAddress(address);
-            var masterThresold = RootChain.InvokeContract(NativeContractKind.Stake.GetName(), nameof(StakeContract.GetMasterThreshold)).AsNumber();
+            var stake = GetStakeFromAddress(storage, address);
+            var masterThresold = RootChain.InvokeContract(storage, NativeContractKind.Stake.GetName(), nameof(StakeContract.GetMasterThreshold)).AsNumber();
             return stake >= masterThresold;
         }
 
-        public int GetIndexOfValidator(Address address)
+        public int GetIndexOfValidator(StorageContext storage, Address address)
         {
             if (!address.IsUser)
             {
@@ -1542,11 +1541,11 @@ namespace Phantasma.Blockchain
                 return -1;
             }
 
-            var result = (int)RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetIndexOfValidator), address).AsNumber();
+            var result = (int)RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetIndexOfValidator), address).AsNumber();
             return result;
         }
 
-        public ValidatorEntry GetValidatorByIndex(int index)
+        public ValidatorEntry GetValidatorByIndex(StorageContext storage, int index)
         {
             if (RootChain == null)
             {
@@ -1560,7 +1559,7 @@ namespace Phantasma.Blockchain
 
             Throw.If(index < 0, "invalid validator index");
 
-            var result = (ValidatorEntry) RootChain.InvokeContract(NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorByIndex), (BigInteger)index).ToObject();
+            var result = (ValidatorEntry) RootChain.InvokeContract(storage, NativeContractKind.Validator.GetName(), nameof(ValidatorContract.GetValidatorByIndex), (BigInteger)index).ToObject();
             return result;
         }
         #endregion
@@ -1671,12 +1670,12 @@ namespace Phantasma.Blockchain
         #endregion
 
         #region CHANNELS
-        public BigInteger GetRelayBalance(Address address)
+        public BigInteger GetRelayBalance(StorageContext storage, Address address)
         {
             var chain = RootChain;
             try
             {
-                var result = chain.InvokeContract("relay", "GetBalance", address).AsNumber();
+                var result = chain.InvokeContract(storage, "relay", "GetBalance", address).AsNumber();
                 return result;
             }
             catch

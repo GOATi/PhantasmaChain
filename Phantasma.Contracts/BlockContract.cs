@@ -21,7 +21,7 @@ namespace Phantasma.Contracts
             if (Runtime.Chain.Height > 0)
             {
                 var lastBlock = Runtime.GetLastBlock();
-                lastValidator = Runtime.GetValidatorForBlock(Runtime.Chain, lastBlock.Hash);
+                lastValidator = Runtime.GetValidatorForBlock(lastBlock.Hash);
                 validationSlotTime = lastBlock.Timestamp;
             }
             else

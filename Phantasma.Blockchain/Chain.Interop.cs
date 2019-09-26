@@ -21,6 +21,8 @@ namespace Phantasma.Blockchain
             vm.RegisterMethod("Runtime.IsWitness", Runtime_IsWitness);
             vm.RegisterMethod("Runtime.IsTrigger", Runtime_IsTrigger);
             vm.RegisterMethod("Runtime.TransferTokens", Runtime_TransferTokens);
+            vm.RegisterMethod("Runtime.MintTokens", Runtime_MintTokens);
+            vm.RegisterMethod("Runtime.BurnTokens", Runtime_BurnTokens);
 
             vm.RegisterMethod("Data.Get", Data_Get);
             vm.RegisterMethod("Data.Set", Data_Set);
@@ -354,7 +356,7 @@ namespace Phantasma.Blockchain
             if (temp.Type == VMType.String)
             {
                 var name = temp.AsString();
-                return vm.Nexus.LookUpName(name);
+                return vm.Nexus.LookUpName(vm.RootStorage, name);
             }
             else
             if (temp.Type == VMType.Bytes)
@@ -368,6 +370,95 @@ namespace Phantasma.Blockchain
                 var addr = temp.AsInterop<Address>();
                 return addr;
             }
+        }
+
+        private static ExecutionState Runtime_MintTokens(RuntimeVM vm)
+        {
+            try
+            {
+                var tx = vm.Transaction;
+                Throw.IfNull(tx, nameof(tx));
+
+                if (vm.Stack.Count < 3)
+                {
+                    return ExecutionState.Fault;
+                }
+
+                VMObject temp;
+
+                var destination = PopAddress(vm);
+
+                temp = vm.Stack.Pop();
+                if (temp.Type != VMType.String)
+                {
+                    return ExecutionState.Fault;
+                }
+                var symbol = temp.AsString();
+
+                temp = vm.Stack.Pop();
+                if (temp.Type != VMType.Number)
+                {
+                    return ExecutionState.Fault;
+                }
+                var amount = temp.AsNumber();
+
+                var success = vm.MintTokens(symbol, destination, amount, false);
+
+                var result = new VMObject();
+                result.SetValue(success);
+                vm.Stack.Push(result);
+            }
+            catch
+            {
+                return ExecutionState.Fault;
+            }
+
+            return ExecutionState.Running;
+        }
+
+
+        private static ExecutionState Runtime_BurnTokens(RuntimeVM vm)
+        {
+            try
+            {
+                var tx = vm.Transaction;
+                Throw.IfNull(tx, nameof(tx));
+
+                if (vm.Stack.Count < 3)
+                {
+                    return ExecutionState.Fault;
+                }
+
+                VMObject temp;
+
+                var destination = PopAddress(vm);
+
+                temp = vm.Stack.Pop();
+                if (temp.Type != VMType.String)
+                {
+                    return ExecutionState.Fault;
+                }
+                var symbol = temp.AsString();
+
+                temp = vm.Stack.Pop();
+                if (temp.Type != VMType.Number)
+                {
+                    return ExecutionState.Fault;
+                }
+                var amount = temp.AsNumber();
+
+                var success = vm.BurnTokens(symbol, destination, amount, false);
+
+                var result = new VMObject();
+                result.SetValue(success);
+                vm.Stack.Push(result);
+            }
+            catch
+            {
+                return ExecutionState.Fault;
+            }
+
+            return ExecutionState.Running;
         }
 
         private static ExecutionState Runtime_TransferTokens(RuntimeVM vm)

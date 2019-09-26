@@ -526,9 +526,9 @@ namespace Phantasma.API
             var result = new AccountResult();
             var address = Address.FromText(addressText);
             result.address = address.Text;
-            result.name = Nexus.LookUpAddressName(address);
+            result.name = Nexus.LookUpAddressName(Nexus.RootChain.Storage, address);
 
-            var stake = Nexus.GetStakeFromAddress(address);
+            var stake = Nexus.GetStakeFromAddress(Nexus.RootChain.Storage, address);
             result.stake = stake.ToString();
 
             var balanceList = new List<BalanceResult>();
@@ -563,10 +563,10 @@ namespace Phantasma.API
                     }
                 }
             }
-            result.relay = Nexus.GetRelayBalance(address).ToString();
+            result.relay = Nexus.GetRelayBalance(Nexus.RootChain.Storage, address).ToString();
             result.balances = balanceList.ToArray();
 
-            var interops = (Address[])Nexus.RootChain.InvokeContract("interop", "GetLinks", address).ToObject();
+            var interops = (Address[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "interop", "GetLinks", address).ToObject();
             if (interops.Length > 0)
             {
                 var interopList = new List<InteropResult>();
@@ -596,7 +596,7 @@ namespace Phantasma.API
                 result.interops = new InteropResult[0];
             }
 
-            var metadata = (Metadata[])Nexus.RootChain.InvokeContract("account", "GetMetadataList", address).ToObject();
+            var metadata = (Metadata[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "account", "GetMetadataList", address).ToObject();
             var metadataResults = metadata.Select(x => new MetadataResult
             {
                 key = x.key,
@@ -617,7 +617,7 @@ namespace Phantasma.API
                 return new ErrorResult { error = "invalid name" };
             }
 
-            var address = Nexus.LookUpName(name);
+            var address = Nexus.LookUpName(Nexus.RootChain.Storage, name);
             if (address.IsNull)
             {
                 return new ErrorResult { error = "name not owned" };
@@ -1126,7 +1126,7 @@ namespace Phantasma.API
 
             if (chain != null && chain.HasContract("market"))
             {
-                forSale = chain.InvokeContract("market", "HasAuction", ID).AsBool();
+                forSale = chain.InvokeContract(Nexus.RootChain.Storage, "market", "HasAuction", ID).AsBool();
             }
             else
             {
@@ -1287,7 +1287,7 @@ namespace Phantasma.API
                 return new ErrorResult { error = "Market not available" };
             }
 
-            IEnumerable<MarketAuction> entries = (MarketAuction[])chain.InvokeContract("market", "GetAuctions").ToObject();
+            IEnumerable<MarketAuction> entries = (MarketAuction[])chain.InvokeContract(Nexus.RootChain.Storage, "market", "GetAuctions").ToObject();
 
             if (!string.IsNullOrEmpty(symbol))
             {
@@ -1325,7 +1325,7 @@ namespace Phantasma.API
 
             var paginatedResult = new PaginatedResult();
 
-            IEnumerable<MarketAuction> entries = (MarketAuction[])chain.InvokeContract("market", "GetAuctions").ToObject();
+            IEnumerable<MarketAuction> entries = (MarketAuction[])chain.InvokeContract(Nexus.RootChain.Storage, "market", "GetAuctions").ToObject();
 
             if (!string.IsNullOrEmpty(symbol))
             {
@@ -1378,13 +1378,13 @@ namespace Phantasma.API
                 return new ErrorResult { error = "Market not available" };
             }
 
-            var forSale = chain.InvokeContract("market", "HasAuction", ID).AsBool();
+            var forSale = chain.InvokeContract(Nexus.RootChain.Storage, "market", "HasAuction", ID).AsBool();
             if (!forSale)
             {
                 return new ErrorResult { error = "Token not for sale" };
             }
 
-            var auction = (MarketAuction)chain.InvokeContract("market", "GetAuction", ID).ToObject();
+            var auction = (MarketAuction)chain.InvokeContract(Nexus.RootChain.Storage, "market", "GetAuction", ID).ToObject();
 
             return new AuctionResult()
             {
@@ -1573,7 +1573,7 @@ namespace Phantasma.API
             }
             else
             {
-                address = Nexus.LookUpName(accountInput);
+                address = Nexus.LookUpName(Nexus.RootChain.Storage, accountInput);
                 if (address.IsNull)
                 {
                     return new ErrorResult { error = "name not owned" };
@@ -1614,7 +1614,7 @@ namespace Phantasma.API
             }
             else
             {
-                address = Nexus.LookUpName(accountInput);
+                address = Nexus.LookUpName(Nexus.RootChain.Storage, accountInput);
                 if (address.IsNull)
                 {
                     return new ErrorResult { error = "name not owned" };
@@ -1648,7 +1648,7 @@ namespace Phantasma.API
             }
             else
             {
-                address = Nexus.LookUpName(accountInput);
+                address = Nexus.LookUpName(Nexus.RootChain.Storage, accountInput);
             }
 
             if (address.IsNull)
@@ -1666,7 +1666,7 @@ namespace Phantasma.API
                 return new ErrorResult { error = "cannot be interop address" };
             }
 
-            var target = Nexus.RootChain.InvokeContract("interop", "GetLink", address, platform).AsAddress();
+            var target = Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "interop", "GetLink", address, platform).AsAddress();
 
             if (target.IsNull)
             {
@@ -1703,7 +1703,7 @@ namespace Phantasma.API
         [APIInfo(typeof(ValidatorResult[]), "Returns an array of available validators.", false, 300)]
         public IAPIResult GetValidators()
         {
-            var validators = Nexus.GetValidators().
+            var validators = Nexus.GetValidators(Nexus.RootChain.Storage).
                 Where(x => !x.address.IsNull).
                 Select(x => new ValidatorResult() { address = x.address.ToString(), type = x.type.ToString() });
 

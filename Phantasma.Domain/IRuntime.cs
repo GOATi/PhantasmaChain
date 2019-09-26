@@ -92,12 +92,17 @@ namespace Phantasma.Domain
         bool CreatePlatform(Address address, string name, string fuelSymbol);
         bool CreateArchive(MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key);
 
+        bool IsAddressOfParentChain(Address address);
+        bool IsAddressOfChildChain(Address address);
+
         bool MintTokens(string symbol, Address target, BigInteger amount, bool isSettlement);
         bool MintToken(string symbol, Address target, BigInteger tokenID, bool isSettlement);
         bool BurnTokens(string symbol, Address target, BigInteger amount, bool isSettlement);
         bool BurnToken(string symbol, Address target, BigInteger tokenID, bool isSettlement);
         bool TransferTokens(string symbol, Address source, Address destination, BigInteger amount);
         bool TransferToken(string symbol, Address source, Address destination, BigInteger tokenID);
+        bool SendTokens(Address targetChainAddress, Address from, Address to, string symbol, BigInteger amount);
+        bool SendToken(Address targetChainAddress, Address from, Address to, string symbol, BigInteger tokenID);
 
         BigInteger CreateNFT(string tokenSymbol, Address chainAddress, byte[] rom, byte[] ram);
         bool DestroyNFT(string tokenSymbol, BigInteger tokenID);

@@ -242,7 +242,7 @@ namespace Phantasma.Blockchain
             Thread.Sleep(BlockTime * 1000);
 
             // we must be a staked validator to do something...
-            if (!Nexus.IsPrimaryValidator(this.ValidatorAddress))
+            if (!Nexus.IsPrimaryValidator(Nexus.RootChain.Storage, this.ValidatorAddress))
             {
                 return true;
             }
@@ -259,7 +259,7 @@ namespace Phantasma.Blockchain
                     }
 
                     // we must be the validator of the current epoch to do something with this chain...
-                    if (chain.GetCurrentValidator() != this.ValidatorAddress)
+                    if (chain.GetCurrentValidator(chain.Storage) != this.ValidatorAddress)
                     {
                         continue;
                     }
