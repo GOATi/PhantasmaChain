@@ -3504,7 +3504,7 @@ namespace Phantasma.Contracts.Extra
         /// </summary>
         /// <param name="botID"></param>
         /// <returns>Nacho Wrestler of the bot</returns>
-        public NachoWrestler GetBotWrestler(int botID)
+        private NachoWrestler GetBotWrestler(int botID)
         {
             int level;
             BigInteger botItemID;
@@ -3654,7 +3654,7 @@ namespace Phantasma.Contracts.Extra
         /// </summary>
         /// <param name="botID"></param>
         /// <returns>The genes of the bot</returns>
-        public byte[] GetBotWrestlerGenes(int botID)
+        private byte[] GetBotWrestlerGenes(int botID)
         {
             byte[] genes;
             var botLevel = (PracticeLevel)(botID);
@@ -3846,50 +3846,9 @@ namespace Phantasma.Contracts.Extra
                 return GetBotWrestlerGenes((int)wrestlerID);
             }
 
-            var nft = Runtime.ReadToken(Constants.WRESTLER_SYMBOL, wrestlerID);
-            var genes = nft.ROM;
-            var wrestler = Serialization.Unserialize<NachoWrestler>(nft.RAM);
-
-            if (wrestler.moveOverrides == null || wrestler.moveOverrides.Length < Constants.MOVE_OVERRIDE_COUNT)
-            {
-                var temp = wrestler.moveOverrides;
-                wrestler.moveOverrides = new byte[Constants.MOVE_OVERRIDE_COUNT];
-
-                if (temp != null)
-                {
-                    for (int i = 0; i < temp.Length; i++)
-                    {
-                        wrestler.moveOverrides[i] = temp[i];
-                    }
-                }
-            }
-
-            if (nft.CurrentOwner.IsSystem)
-            {
-                wrestler.location = WrestlerLocation.Market;
-            }
-
-            // TODO fix -> por alguma razão o itemID não está inicializado mas quando se cria um novo lutador no server, o itemID é inicializado com 0
-            //if (wrestler.itemID != 0) // TODO podemos por este if outra vez dps dos operadores do big int estarem corrigidos
-            if (wrestler.itemID > 0)
-            {
-                //var itemKind = Formulas.GetItemKind(wrestler.itemID);
-                //var itemKind = GetItem(wrestler.itemID).kind;
-                // todo confirmar apagar este código. este tryparse já não sentido acho eu
-                //int n;
-                //if (int.TryParse(itemKind.ToString(), out n))
-                //{
-                //    wrestler.itemID = 0;
-                //}
-            }
-
-            if (!IsValidMaskOverride(wrestler))
-            {
-                wrestler.maskOverrideID = 0;
-                wrestler.maskOverrideRarity = 0;
-                wrestler.maskOverrideCheck = 0;
-            }
-
+            var nft     = Runtime.ReadToken(Constants.WRESTLER_SYMBOL, wrestlerID);
+            var genes   = nft.ROM;
+            
             return genes;
         }
 
