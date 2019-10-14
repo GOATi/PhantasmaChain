@@ -574,6 +574,8 @@ namespace Phantasma.API
                 result.unclaimed = "0";
             }
 
+            var validator = Nexus.GetValidatorType(address);
+
             var balanceList = new List<BalanceResult>();
             foreach (var symbol in Nexus.Tokens)
             {
@@ -606,8 +608,10 @@ namespace Phantasma.API
                     }
                 }
             }
+
             result.relay = Nexus.GetRelayBalance(address).ToString();
             result.balances = balanceList.ToArray();
+            result.validator = validator.ToString();
 
             return result;
         }
@@ -1052,7 +1056,7 @@ namespace Phantasma.API
             var status = Mempool.GetTransactionStatus(hash, out string reason);
             if (status == MempoolTransactionStatus.Pending)
             {
-                if (Mempool.RejectTransaction(hash))
+                if (Mempool.Discard(hash))
                 {
                     return new SingleResult() { value = hash };
                 }
@@ -1121,11 +1125,14 @@ namespace Phantasma.API
 
             var governance = (GovernancePair[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "governance", nameof(GovernanceContract.GetValues)).ToObject();
 
+            var masters = ((Address[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "stake", nameof(StakeContract.GetMasterAddresses)).ToObject()).Select(x => x.Text).ToArray();
+
             return new NexusResult() {
                 name = Nexus.Name,
                 tokens = tokenList.ToArray(),
                 platforms = platformList.ToArray(),
                 chains  = chainList.ToArray(),
+                masters = masters,
                 governance = governance.Select(x => new GovernanceResult() { name = x.Name, value = x.Value.ToString()}).ToArray()
             };
         }

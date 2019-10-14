@@ -209,9 +209,11 @@ namespace Phantasma.Contracts.Native
                     }
                 }
 
-                Runtime.Expect(index >= 0, "Expected this address to be a master");
+                if (index >= 0)
+                {
+                    _mastersList.RemoveAt<EnergyMaster>(index);
+                }
 
-                _mastersList.RemoveAt<EnergyMaster>(index);
                 _mastersList.Add(new EnergyMaster() { address = to, claimDate = claimDate });
             }
 
@@ -285,9 +287,12 @@ namespace Phantasma.Contracts.Native
 
             Runtime.TransferTokens(DomainSettings.StakingTokenSymbol, from, this.Address, stakeAmount);
 
+            var unclaimedPartials = GetUnclaimed(from);
+
             var entry = new EnergyAction()
             {
-                unclaimedPartials = stakeAmount + GetLastAction(from).unclaimedPartials,
+                //unclaimedPartials = stakeAmount + GetLastAction(from).unclaimedPartials,
+                unclaimedPartials = stakeAmount + unclaimedPartials,
                 totalAmount = newStake,
                 timestamp = this.Runtime.Time,
             };
@@ -304,7 +309,7 @@ namespace Phantasma.Contracts.Native
 
             var masterAccountThreshold = GetMasterThreshold();
 
-            if (Runtime.Nexus.GenesisAddress != from && newStake >= masterAccountThreshold && !IsMaster(from))
+            if (Runtime.Nexus.HasGenesis && newStake >= masterAccountThreshold && !IsMaster(from))
             {
                 var nextClaim = GetMasterClaimDate(2);
 
@@ -355,7 +360,8 @@ namespace Phantasma.Contracts.Native
 
             stake.totalAmount -= unstakeAmount;
 
-            var unclaimedPartials = GetLastAction(from).unclaimedPartials;
+            //var unclaimedPartials = GetLastAction(from).unclaimedPartials;
+            var unclaimedPartials = GetUnclaimed(from);
 
             if (stake.totalAmount == 0 && unclaimedPartials == 0)
             {
@@ -494,7 +500,9 @@ namespace Phantasma.Contracts.Native
                 currentStake = 0;
             }
 
-            return CalculateRewardsWithHalving(currentStake, GetLastAction(stakeAddress).unclaimedPartials, lastClaim.timestamp, Runtime.Time);
+            var unclaimedPartials = GetLastAction(stakeAddress).unclaimedPartials;
+
+            return CalculateRewardsWithHalving(currentStake, lastClaim.timestamp, Runtime.Time) + unclaimedPartials;
         }
 
         public void Claim(Address from, Address stakeAddress)
@@ -550,7 +558,7 @@ namespace Phantasma.Contracts.Native
             // NOTE here we set the full staked amount instead of claimed amount, to avoid infinite claims loophole
             var stake = _stakes.Get<Address, EnergyAction>(stakeAddress);
 
-            if (stake.totalAmount == 0 && GetLastAction(stakeAddress).unclaimedPartials == 0)
+            if (stake.totalAmount == 0 && GetUnclaimed(stakeAddress) == 0)
                 _stakes.Remove(from);
 
             var action = new EnergyAction()
@@ -748,7 +756,7 @@ namespace Phantasma.Contracts.Native
             return votingPower;
         }
 
-        private BigInteger CalculateRewardsWithHalving(BigInteger totalStake, BigInteger unclaimedPartials, Timestamp startTime, Timestamp endTime)
+        private BigInteger CalculateRewardsWithHalving(BigInteger totalStake, Timestamp startTime, Timestamp endTime)
         {
             if (genesisTimestamp == 0)
             {
@@ -760,7 +768,7 @@ namespace Phantasma.Contracts.Native
                 genesisTimestamp = genesisBlock.Timestamp;
             }
 
-            if (StakeToFuel(totalStake + unclaimedPartials) <= 0)
+            if (StakeToFuel(totalStake) <= 0)
                 return 0;
 
             DateTime genesisDate = genesisTimestamp;
@@ -771,7 +779,7 @@ namespace Phantasma.Contracts.Native
             uint halvingAmount = 1;
             var currentDate = startDate;
             var nextHalvingDate = genesisDate.AddYears(2);
-            var partialRewardsFlag = true;
+            //var partialRewardsFlag = true;
 
             while (currentDate <= endDate)
             {
@@ -779,11 +787,11 @@ namespace Phantasma.Contracts.Native
                 {
                     var daysInCurrentHalving = 0;
 
-                    if (partialRewardsFlag)
+                    /*if (partialRewardsFlag)
                     {
                         partialRewardsFlag = false;
                         reward += StakeToFuel(unclaimedPartials) / halvingAmount;
-                    }
+                    }*/
 
                     if (endDate > nextHalvingDate)
                     {

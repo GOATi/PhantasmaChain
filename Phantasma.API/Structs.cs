@@ -66,6 +66,9 @@ namespace Phantasma.API
 
         [APIDescription("List of governance values")]
         public GovernanceResult[] governance;
+
+        [APIDescription("List of master addresses")]
+        public string[] masters;
     }
 
 
@@ -82,6 +85,9 @@ namespace Phantasma.API
 
         [APIDescription("Amount of available KCAL for relay channel")]
         public string relay;
+
+        [APIDescription("Validator role")]
+        public string validator;
 
         [APIDescription("List of token balances")]
         public BalanceResult[] balances;
