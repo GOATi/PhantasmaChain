@@ -10,7 +10,7 @@ namespace Phantasma.Contracts.Native
 {
     public struct EnergyAction
     {
-        public BigInteger unclaimedPartials;
+        public BigInteger unclaimedEnergy;
         public BigInteger totalAmount;
         public Timestamp timestamp;
     }
@@ -301,12 +301,16 @@ namespace Phantasma.Contracts.Native
 
             Runtime.TransferTokens(DomainSettings.StakingTokenSymbol, from, this.Address, stakeAmount);
 
-            var unclaimedPartials = GetUnclaimed(from);
+            var oldUnclaimedEnergy = GetUnclaimed(from);
+
+            var currentHalving = GetCurrentHalvingAmount();
+            var newUnclaimedEnergy = StakeToFuel(stakeAmount) / currentHalving;
+            
 
             var entry = new EnergyAction()
             {
-                //unclaimedPartials = stakeAmount + GetLastAction(from).unclaimedPartials,
-                unclaimedPartials = stakeAmount + unclaimedPartials,
+                //unclaimedEnergy = stakeAmount + GetLastAction(from).unclaimedEnergy,
+                unclaimedEnergy = newUnclaimedEnergy + oldUnclaimedEnergy,
                 totalAmount = newStake,
                 timestamp = this.Runtime.Time,
             };
@@ -374,10 +378,10 @@ namespace Phantasma.Contracts.Native
 
             stake.totalAmount -= unstakeAmount;
 
-            //var unclaimedPartials = GetLastAction(from).unclaimedPartials;
-            var unclaimedPartials = GetUnclaimed(from);
+            //var unclaimedEnergy = GetLastAction(from).unclaimedEnergy;
+            var unclaimedEnergy = GetUnclaimed(from);
 
-            if (stake.totalAmount == 0 && unclaimedPartials == 0)
+            if (stake.totalAmount == 0 && unclaimedEnergy == 0)
             {
                 _stakes.Remove(from);
                 _voteHistory.Remove(from);
@@ -392,7 +396,7 @@ namespace Phantasma.Contracts.Native
             {
                 var entry = new EnergyAction()
                 {
-                    unclaimedPartials = unclaimedPartials,
+                    unclaimedEnergy = unclaimedEnergy,
                     totalAmount = stake.totalAmount,
                     timestamp = this.Runtime.Time,
                 };
@@ -514,9 +518,9 @@ namespace Phantasma.Contracts.Native
                 currentStake = 0;
             }
 
-            var unclaimedPartials = GetLastAction(stakeAddress).unclaimedPartials;
+            var unclaimedEnergy = GetLastAction(stakeAddress).unclaimedEnergy;
 
-            return CalculateRewardsWithHalving(currentStake, lastClaim.timestamp, Runtime.Time) + unclaimedPartials;
+            return CalculateRewardsWithHalving(currentStake, lastClaim.timestamp, Runtime.Time) + unclaimedEnergy;
         }
 
         public void Claim(Address from, Address stakeAddress)
@@ -577,7 +581,7 @@ namespace Phantasma.Contracts.Native
 
             var action = new EnergyAction()
             {
-                unclaimedPartials = 0,
+                unclaimedEnergy = 0,
                 totalAmount = stake.totalAmount,
                 timestamp = Runtime.Time
             };
@@ -797,7 +801,7 @@ namespace Phantasma.Contracts.Native
                     /*if (partialRewardsFlag)
                     {
                         partialRewardsFlag = false;
-                        reward += StakeToFuel(unclaimedPartials) / halvingAmount;
+                        reward += StakeToFuel(unclaimedEnergy) / halvingAmount;
                     }*/
 
                     if (endDate > nextHalvingDate)
@@ -828,6 +832,23 @@ namespace Phantasma.Contracts.Native
             var lastStake = _stakes.Get<Address, EnergyAction>(address);
 
             return lastClaim.timestamp >= lastStake.timestamp ? lastClaim : lastStake;
+        }
+
+        public BigInteger GetCurrentHalvingAmount()
+        {
+            DateTime genesisDate = GenesisTimestamp;
+            DateTime currentTime = Runtime.Time;
+
+            var nextHalvingDate = genesisDate.AddYears(2);
+            var halvingAmount = BigInteger.One;
+
+            while (currentTime > nextHalvingDate)
+            {
+                nextHalvingDate = nextHalvingDate.AddYears(2);
+                halvingAmount *= 2;
+            }
+
+            return halvingAmount;
         }
     }
 }
