@@ -47,7 +47,21 @@ namespace Phantasma.Contracts.Native
         private StorageMap _voteHistory; // <Address, List<StakeLog>>
         private uint _masterClaimCount;
 
-        private Timestamp genesisTimestamp = 0;
+        private Timestamp _genesisTimestamp = 0;
+        private Timestamp GenesisTimestamp
+        {
+            get
+            {
+                if (_genesisTimestamp == 0)
+                {
+                    Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
+                    var genesisBlock = Runtime.GetBlockByHeight(1);
+                    if (genesisBlock != null)   //special case for genesis block's creation
+                        _genesisTimestamp = genesisBlock.Timestamp;
+                }
+                return _genesisTimestamp;
+            }
+        }
 
         public static readonly BigInteger DefaultMasterThreshold = UnitConversion.ToBigInteger(50000, DomainSettings.StakingTokenDecimals);
         public readonly static BigInteger MasterClaimGlobalAmount = UnitConversion.ToBigInteger(125000, DomainSettings.StakingTokenDecimals);
@@ -758,20 +772,13 @@ namespace Phantasma.Contracts.Native
 
         private BigInteger CalculateRewardsWithHalving(BigInteger totalStake, Timestamp startTime, Timestamp endTime)
         {
-            if (genesisTimestamp == 0)
-            {
-                Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
-                var genesisBlock = Runtime.GetBlockByHeight(1);
-                if (genesisBlock == null)   //special case for genesis block's creation
-                    return StakeToFuel(totalStake);
-
-                genesisTimestamp = genesisBlock.Timestamp;
-            }
+            if (GenesisTimestamp == 0)
+               return StakeToFuel(totalStake);
 
             if (StakeToFuel(totalStake) <= 0)
                 return 0;
 
-            DateTime genesisDate = genesisTimestamp;
+            DateTime genesisDate = GenesisTimestamp;
             DateTime startDate = startTime;
             DateTime endDate = endTime;
 
