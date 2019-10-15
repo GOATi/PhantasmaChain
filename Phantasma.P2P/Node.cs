@@ -466,7 +466,8 @@ namespace Phantasma.Network.P2P
 
                         if (request.Kind.HasFlag(RequestKind.Chains))
                         {
-                            var chains = Nexus.Chains.Select(x => Nexus.GetChainByName(x)).Select(x => new ChainInfo(x.Name, Nexus.GetParentChainByName(x.Name), x.Height));
+                            var chainList = Nexus.GetChains(Nexus.RootStorage);
+                            var chains = chainList.Select(x => Nexus.GetChainByName(x)).Select(x => new ChainInfo(x.Name, Nexus.GetParentChainByName(x.Name), x.Height));
                             answer.SetChains(chains);
                         }
 
@@ -498,7 +499,7 @@ namespace Phantasma.Network.P2P
                                 {
                                     var blockHash = chain.GetBlockHashAtHeight(currentBlock);
                                     var block = chain.GetBlockByHash(blockHash);
-                                    var bytes = block.ToByteArray();
+                                    var bytes = block.ToByteArray(true);
                                     var str = Base16.Encode(bytes);
 
                                     foreach (var tx in chain.GetBlockTransactions(block))

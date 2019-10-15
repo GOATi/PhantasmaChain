@@ -5,21 +5,6 @@ using Phantasma.Storage.Context;
 
 namespace Phantasma.Contracts.Native
 {
-    public struct LeaderboardRow
-    {
-        public Address address;
-        public BigInteger score;
-    }
-
-    public struct Leaderboard
-    {
-        public string name;
-        public Address owner;
-        public BigInteger size;
-        public BigInteger period;
-        public BigInteger round;
-    }
-
     public sealed class RankingContract : NativeContract
     {
         public override NativeContractKind Kind => NativeContractKind.Ranking;
@@ -67,6 +52,15 @@ namespace Phantasma.Contracts.Native
             return _leaderboards.Get<string, Leaderboard>(name);
         }
 
+        public LeaderboardRow[] GetRows(string name)
+        {
+            Runtime.Expect(_leaderboards.ContainsKey<string>(name), "invalid leaderboard");
+            var leaderboard = _leaderboards.Get<string, Leaderboard>(name);
+            var rows = _rows.Get<string, StorageList>(name);
+
+            return rows.All<LeaderboardRow>();
+        }
+
         public void InsertScore(Address from, Address target, string name, BigInteger score)
         {
             Runtime.Expect(_leaderboards.ContainsKey<string>(name), "invalid leaderboard");
@@ -78,11 +72,33 @@ namespace Phantasma.Contracts.Native
             var rows = _rows.Get<string, StorageList>(name);
             var count = rows.Count();
 
-            var newRow = new LeaderboardRow()
+            int oldIndex = -1;
+            for (int i = 0; i < count; i++)
             {
-                address = target,
-                score = score
-            };
+                var entry = rows.Get<LeaderboardRow>(i);
+                if (entry.address == target)
+                {
+                    if (entry.score > score)
+                    {
+                        return;
+                    }
+                    oldIndex = i;
+                    break;
+                }
+            }
+
+            if (oldIndex >= 0)
+            {
+                count--;
+
+                for (int i = oldIndex; i < count - 1; i++)
+                {
+                    var entry = rows.Get<LeaderboardRow>(i + 1);
+                    rows.Replace<LeaderboardRow>(i, entry);
+                }
+
+                rows.RemoveAt<LeaderboardRow>(count);
+            }
 
             int bestIndex = 0;
 
@@ -108,6 +124,12 @@ namespace Phantasma.Contracts.Native
                 rows.Replace<LeaderboardRow>(i, entry);
             }
 
+            var newRow = new LeaderboardRow()
+            {
+                address = target,
+                score = score
+            };
+
             if (bestIndex < count)
             {
                 rows.Replace(bestIndex, newRow);
@@ -118,7 +140,15 @@ namespace Phantasma.Contracts.Native
                 rows.Add<LeaderboardRow>(newRow);
             }
 
-            Runtime.Notify(EventKind.LeaderboardInsert, from, newRow);
+            rows = _rows.Get<string, StorageList>(name);
+            count = rows.Count();
+            for (int i=0; i<bestIndex; i++)
+            {
+                var entry = rows.Get<LeaderboardRow>(i);
+                Runtime.Expect(entry.score >= score, "leaderboard bug");
+            }
+
+            Runtime.Notify(EventKind.LeaderboardInsert, target, newRow);
         }
     }
 }

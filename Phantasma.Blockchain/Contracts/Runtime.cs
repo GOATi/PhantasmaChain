@@ -33,8 +33,6 @@ namespace Phantasma.Blockchain.Contracts
         public bool DelayPayment { get; private set; }
         public readonly bool readOnlyMode;
 
-        private bool isBlockOperation;
-
         private bool randomized;
         private BigInteger seed;
 
@@ -42,7 +40,7 @@ namespace Phantasma.Blockchain.Contracts
 
         private readonly StorageChangeSetContext changeSet;
 
-        private StorageContext RootStorage => this.IsRootChain() ? this.Storage : Nexus.RootStorage;
+        internal StorageContext RootStorage => this.IsRootChain() ? this.Storage : Nexus.RootStorage;
 
         public RuntimeVM(byte[] script, Chain chain, Timestamp time, Transaction transaction, StorageChangeSetContext changeSet, OracleReader oracle, bool readOnlyMode, bool delayPayment = false) : base(script)
         {
@@ -67,7 +65,6 @@ namespace Phantasma.Blockchain.Contracts
             this.changeSet = changeSet;
             this.readOnlyMode = readOnlyMode;
 
-            this.isBlockOperation = false;
             this.randomized = false;
 
             this.FeeTargetAddress = Address.Null;
@@ -109,9 +106,6 @@ namespace Phantasma.Blockchain.Contracts
 
         public override ExecutionState ExecuteInterop(string method)
         {
-            // TODO review this better
-            //Expect(!isBlockOperation, "no interops available in block operations");
-
             BigInteger gasCost;
 
             // construtor
@@ -133,6 +127,10 @@ namespace Phantasma.Blockchain.Contracts
 
                     case "Nexus":
                         gasCost = 1000;
+                        break;
+
+                    case "Organization":
+                        gasCost = 200;
                         break;
 
                     default:
@@ -180,11 +178,6 @@ namespace Phantasma.Blockchain.Contracts
 
         public override ExecutionContext LoadContext(string contextName)
         {
-            if (isBlockOperation && Nexus.HasGenesis)
-            {
-                throw new ChainException($"{contextName} context not available in block operations");
-            }
-
             var contract = this.Nexus.GetContractByName(contextName);
             if (contract != null)
             {
@@ -269,14 +262,6 @@ namespace Phantasma.Blockchain.Contracts
                         break;
                     }
 
-                case EventKind.BlockCreate:
-                case EventKind.BlockClose:
-                    Expect(contract == Nexus.BlockContractName, $"event kind only in {Nexus.BlockContractName} contract");
-
-                    isBlockOperation = true;
-                    UsedGas = 0;
-                    break;
-
                 case EventKind.ValidatorSwitch:
                     Expect(contract == Nexus.BlockContractName, $"event kind only in {Nexus.BlockContractName} contract");
                     break;
@@ -342,7 +327,7 @@ namespace Phantasma.Blockchain.Contracts
 
         public override ExecutionState ConsumeGas(BigInteger gasCost)
         {
-            if (gasCost == 0 || isBlockOperation)
+            if (gasCost == 0)
             {
                 return ExecutionState.Running;
             }
@@ -382,7 +367,7 @@ namespace Phantasma.Blockchain.Contracts
             var token = GetToken(symbol);
 
             Core.Throw.If(Oracle == null, "cannot read price from null oracle");
-            var bytes = Oracle.Read("price://" + symbol);
+            var bytes = Oracle.Read(this.Time, "price://" + symbol);
             var value = BigInteger.FromUnsignedArray(bytes, true);
 
             Expect(value > 0, "token price not available for " + symbol);
@@ -514,8 +499,20 @@ namespace Phantasma.Blockchain.Contracts
         }
         #endregion
 
+        private HashSet<Address> validatedWitnesses = new HashSet<Address>(); 
+
         public bool IsWitness(Address address)
         {
+            if (address.IsInterop)
+            {
+                return false;
+            }
+
+            if (address == Address.Null)
+            {
+                return false;
+            }
+
             if (address == this.Chain.Address /*|| address == this.Address*/)
             {
                 return false;
@@ -526,14 +523,66 @@ namespace Phantasma.Blockchain.Contracts
                 return true;
             }
 
-            if (address.IsSystem)
+            if (validatedWitnesses.Contains(address))
             {
-                return address == CurrentContext.Address;
+                return true;
             }
 
-            if (address.IsInterop)
+            if (address.IsSystem)
             {
-                return false;
+                var org = Nexus.GetOrganizationByAddress(RootStorage, address);
+                if (org != null)
+                {
+                    var size = org.Size;
+                    if (size < 1)
+                    {
+                        return false;
+                    }
+
+                    var majorityCount = (size / 2) + 1;
+                    if (Transaction == null || Transaction.Signatures.Length < majorityCount)
+                    {
+                        return false;
+                    }
+
+                    int witnessCount = 0;
+
+                    this.ConsumeGas(10000);
+
+                    var members = new List<Address>(org.GetMembers());
+                    var msg = Transaction.ToByteArray(false);
+
+                    foreach (var sig in Transaction.Signatures)
+                    {
+                        if (witnessCount >= majorityCount)
+                        {
+                            break; // dont waste time if we already reached a majority
+                        }
+
+                        this.Expect(sig.Kind != SignatureKind.Ring, "ring signature not supported yet here");
+
+                        foreach (var addr in members)
+                        {
+                            if (sig.Verify(msg, addr))
+                            {
+                                witnessCount++;
+                                members.Remove(addr);
+                                break;
+                            }
+                        }
+                    }
+
+                    var result =  witnessCount >= majorityCount;
+                    if (result)
+                    {
+                        validatedWitnesses.Add(address);
+                    }
+                    return result;
+                }
+                else
+                {
+                    return address == CurrentContext.Address;
+                }
             }
 
             if (this.Transaction == null)
@@ -541,12 +590,23 @@ namespace Phantasma.Blockchain.Contracts
                 return false;
             }
 
+            bool accountResult;
+
             if (address.IsUser && Nexus.HasGenesis && this.Nexus.HasAddressScript(RootStorage, address))
             {
-                return InvokeTriggerOnAccount(address, AccountTrigger.OnWitness, address);
+                accountResult = InvokeTriggerOnAccount(address, AccountTrigger.OnWitness, address);
+            }
+            else
+            {
+                accountResult = this.Transaction.IsSignedBy(address);
             }
 
-            return this.Transaction.IsSignedBy(address);
+            if (accountResult)
+            {
+                validatedWitnesses.Add(address);
+            }
+
+            return accountResult;
         }
 
         public IBlock GetBlockByHash(Hash hash)
@@ -664,11 +724,6 @@ namespace Phantasma.Blockchain.Contracts
             return Chain.GetTransactionHashesForAddress(address);
         }
 
-        public Address GetValidatorForBlock(Hash blockHash)
-        {
-            return Chain.GetValidatorForBlock(blockHash);
-        }
-
         public ValidatorEntry GetValidatorByIndex(int index)
         {
             return Nexus.GetValidatorByIndex(index);
@@ -714,7 +769,7 @@ namespace Phantasma.Blockchain.Contracts
             return Nexus.GetStakeFromAddress(this.RootStorage, address);
         }
 
-        private static readonly string uuidKey = ".uuid";
+        private static readonly byte[] uuidKey = System.Text.Encoding.UTF8.GetBytes(".uuid");
 
         public BigInteger GenerateUID()
         {
@@ -877,8 +932,25 @@ namespace Phantasma.Blockchain.Contracts
             var platformID = Nexus.CreatePlatform(RootStorage, externalAddress, interopAddress, name, fuelSymbol);
             Runtime.Expect(platformID > 0, "creation of platform failed");
 
-            Runtime.Notify(EventKind.PlatformCreate, interopAddress, name);
+            Runtime.Notify(EventKind.PlatformCreate, from, name);
             return platformID;
+        }
+
+        public void CreateOrganization(Address from, string ID, string name, byte[] script)
+        {
+            var Runtime = this;
+            Runtime.Expect(Runtime.IsRootChain(), "must be root chain");
+
+            Runtime.Expect(from == Runtime.Nexus.GenesisAddress, "must be genesis");
+            Runtime.Expect(Runtime.IsWitness(from), "invalid witness");
+
+            Runtime.Expect(ValidationUtils.IsValidIdentifier(ID), "invalid organization name");
+
+            Runtime.Expect(!Nexus.OrganizationExists(RootStorage, ID), "organization already exists");
+
+            Nexus.CreateOrganization(RootStorage, ID, name, script);
+
+            Runtime.Notify(EventKind.OrganizationCreate, from, ID);
         }
 
         public void CreateArchive(Address from, MerkleTree merkleTree, BigInteger size, ArchiveFlags flags, byte[] key)
@@ -1150,7 +1222,7 @@ namespace Phantasma.Blockchain.Contracts
 
         public byte[] ReadOracle(string URL)
         {
-            return this.Oracle.Read(URL);
+            return this.Oracle.Read(this.Time, URL);
         }
 
         public IToken GetToken(string symbol)
@@ -1171,7 +1243,7 @@ namespace Phantasma.Blockchain.Contracts
         public IPlatform GetPlatformByIndex(int index)
         {
             index--;
-            var platforms = Nexus.Platforms;
+            var platforms = this.GetPlatforms();
             if (index<0 || index >= platforms.Length)
             {
                 return null;
@@ -1191,9 +1263,44 @@ namespace Phantasma.Blockchain.Contracts
             return Nexus.GetChainByName(name);
         }
 
+        public string[] GetTokens()
+        {
+            return Nexus.GetTokens(this.RootStorage);
+        }
+
+        public string[] GetContracts()
+        {
+            return Nexus.GetContracts(this.RootStorage);
+        }
+
+        public string[] GetChains()
+        {
+            return Nexus.GetChains(this.RootStorage);
+        }
+
+        public string[] GetPlatforms()
+        {
+            return Nexus.GetPlatforms(this.RootStorage);
+        }
+
+        public string[] GetFeeds()
+        {
+            return Nexus.GetFeeds(this.RootStorage);
+        }
+
+        public string[] GetOrganizations()
+        {
+            return Nexus.GetOrganizations(this.RootStorage);
+        }
+
         public void Log(string description)
         {
-            throw new NotImplementedException();
+            var Runtime = this;
+            Runtime.Expect(Nexus.Name != "mainnet", "logs not allowed on this nexus");
+            Runtime.Expect(!string.IsNullOrEmpty(description), "invalid log string");
+            Runtime.Expect(description.Length <= 256, "log string too large");
+            Runtime.ConsumeGas(1000);
+            Runtime.Notify(EventKind.Log, this.EntryAddress, description);
         }
 
         public void Throw(string description)
@@ -1226,5 +1333,39 @@ namespace Phantasma.Blockchain.Contracts
                 lines.Add(Base16.Encode(bytes));
             }
         }
+
+        public bool OrganizationExists(string name)
+        {
+            return Nexus.OrganizationExists(RootStorage, name);
+        }
+
+        public IOrganization GetOrganization(string name)
+        {
+            return Nexus.GetOrganizationByName(RootStorage, name);
+        }
+
+        public bool AddMember(string organization, Address admin, Address target)
+        {
+            var org = Nexus.GetOrganizationByName(RootStorage, organization);
+            return org.AddMember(this, admin, target);
+        }
+
+        public bool RemoveMember(string organization, Address admin, Address target)
+        {
+            var org = Nexus.GetOrganizationByName(RootStorage, organization);
+            return org.RemoveMember(this, admin, target);
+        }
+
+        public void MigrateMember(string organization, Address admin, Address source, Address destination)
+        {
+            var org = Nexus.GetOrganizationByName(RootStorage, organization);
+            org.Migrate(this, admin, source, destination);
+        }
+
+        public Address GetValidator(Timestamp time)
+        {
+            return this.Chain.GetValidator(this.RootStorage, time);
+        }
+
     }
 }

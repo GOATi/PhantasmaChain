@@ -1,4 +1,5 @@
-﻿using Phantasma.Cryptography;
+﻿using Phantasma.Core.Types;
+using Phantasma.Cryptography;
 using Phantasma.Domain;
 using Phantasma.Numerics;
 using Phantasma.Storage;
@@ -105,8 +106,8 @@ namespace Phantasma.Blockchain
 
         public IEnumerable<OracleEntry> Entries => _entries.Values;
 
-        protected abstract byte[] PullData(string url);
-        protected abstract decimal PullPrice(string symbol);
+        protected abstract byte[] PullData(Timestamp time, string url);
+        protected abstract decimal PullPrice(Timestamp time, string symbol);
         protected abstract InteropBlock PullPlatformBlock(string platformName, string chainName, Hash hash);
         protected abstract InteropTransaction PullPlatformTransaction(string platformName, string chainName, Hash hash);
 
@@ -117,7 +118,7 @@ namespace Phantasma.Blockchain
             this.Nexus = nexus;
         }
 
-        public byte[] Read(string url)
+        public byte[] Read(Timestamp time, string url)
         {
             if (_entries.ContainsKey(url))
             {
@@ -136,7 +137,7 @@ namespace Phantasma.Blockchain
                 if (Nexus.PlatformExists(platformName))
                 {
                     args = args.Skip(2).ToArray();
-                    return ReadChainOracle(platformName, chainName, args);
+                    content = ReadChainOracle(platformName, chainName, args);
                 }
                 else
                 { 
@@ -160,13 +161,13 @@ namespace Phantasma.Blockchain
                     throw new OracleException("unknown token: " + baseSymbol);
                 }
 
-                var price = PullPrice(baseSymbol);
+                var price = PullPrice(time, baseSymbol);
                 var val = UnitConversion.ToBigInteger(price, DomainSettings.FiatTokenDecimals);
-                return val.ToUnsignedByteArray();
+                content = val.ToUnsignedByteArray();
             }
             else
             {
-                content = PullData(url);
+                content = PullData(time, url);
             }
         
             var entry = new OracleEntry(url, content);
@@ -327,11 +328,11 @@ namespace Phantasma.Blockchain
             }
         }
 
-        public InteropTransaction ReadTransactionFromOracle(string platform, string chain, Hash hash)
+        public InteropTransaction ReadTransaction(string platform, string chain, Hash hash)
         {
-            var bytes = this.Read($"{OracleReader.interopTag}{platform}/{chain}/tx/{hash}");
-            var tx = Serialization.Unserialize<InteropTransaction>(bytes);
-            return tx;
+            var url = DomainExtensions.GetOracleTransactionURL(platform, chain, hash);
+            var bytes = this.Read(Timestamp.Now, url);
+            return Serialization.Unserialize<InteropTransaction>(bytes);
         }
     }
 }

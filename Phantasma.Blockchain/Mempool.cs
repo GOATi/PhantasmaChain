@@ -253,7 +253,7 @@ namespace Phantasma.Blockchain
 
             while (transactions.Count > 0)
             {
-                var block = new Block(isFirstBlock ? 1 : (lastBlock.Height + 1), Chain.Address, Timestamp.Now, transactions.Select(x => x.Hash), isFirstBlock ? Hash.Null : lastBlock.Hash, protocol);
+                var block = new Block(isFirstBlock ? 1 : (lastBlock.Height + 1), Chain.Address, Timestamp.Now, transactions.Select(x => x.Hash), isFirstBlock ? Hash.Null : lastBlock.Hash, protocol, Mempool.ValidatorAddress, Mempool.Payload);
 
                 try
                 {
@@ -289,7 +289,7 @@ namespace Phantasma.Blockchain
 
                 try
                 {
-                    Chain.BakeBlock(ref block, ref transactions, minFee, Mempool.ValidatorKeys, Timestamp.Now);
+                    block.Sign(Mempool.ValidatorKeys);
                     Chain.AddBlock(block, transactions, minFee);
                 }
                 catch (Exception e)
@@ -351,6 +351,8 @@ namespace Phantasma.Blockchain
     {
         public bool Running => CurrentState == State.Running;
 
+        public byte[] Payload { get; private set; }
+
         public static readonly int MinimumBlockTime = 2; // in seconds
         public static readonly int MaxTransactionsPerBlock = 5000;
 
@@ -378,7 +380,7 @@ namespace Phantasma.Blockchain
 
         public Logger Logger { get; }
 
-        public Mempool(PhantasmaKeys validatorKeys, Nexus nexus, int blockTime, BigInteger minimumFee, uint defaultPoW = 0, Logger logger = null)
+        public Mempool(PhantasmaKeys validatorKeys, Nexus nexus, int blockTime, BigInteger minimumFee, byte[] payload, uint defaultPoW = 0, Logger logger = null)
         {
             Throw.If(blockTime < MinimumBlockTime, "invalid block time");
 
@@ -387,6 +389,7 @@ namespace Phantasma.Blockchain
             this.BlockTime = blockTime;
             this.MinimumFee = minimumFee;
             this.DefaultPoW = defaultPoW;
+            this.Payload = payload;
             this.Logger = logger;
 
             Logger?.Message($"Starting mempool with block time of {blockTime} seconds.");

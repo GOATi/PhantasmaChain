@@ -409,7 +409,6 @@ namespace Phantasma.API
                 timestamp = block != null ? block.Timestamp.Value : 0,
                 blockHeight = block != null ? (int)block.Height : -1,
                 blockHash = block != null ? block.Hash.ToString() : Hash.Null.ToString(),
-                confirmations = block != null ? Nexus.GetConfirmationsOfBlock(block) : 0,
                 script = tx.Script.Encode(),
                 fee = chain != null ? chain.GetTransactionFee(tx.Hash).ToString() : "0"
             };
@@ -460,7 +459,8 @@ namespace Phantasma.API
                 chainAddress = chain.Address.ToString(),
                 protocol = block.Protocol,
                 reward = chain.GetBlockReward(block).ToString(),
-                validatorAddress = chain.GetValidatorForBlock(block).ToString(),
+                validatorAddress = block.Validator.ToString(),
+                events = block.Events.Select(x => FillEvent(x)).ToArray(),
             };
 
             var txs = new List<TransactionResult>();
@@ -562,24 +562,30 @@ namespace Phantasma.API
             result.name = Nexus.LookUpAddressName(Nexus.RootStorage, address);
 
             var stake = Nexus.GetStakeFromAddress(Nexus.RootStorage, address);
-            result.stake = stake.ToString();
 
             if (stake > 0)
             {
                 var unclaimed = Nexus.GetUnclaimedFuelFromAddress(Nexus.RootStorage, address);
-                result.unclaimed = unclaimed.ToString();
+                var time = Nexus.GetStakeTimestampOfAddress(Nexus.RootStorage, address);
+                result.stakes = new StakeResult() { amount = stake.ToString(), time = time.Value, unclaimed = unclaimed.ToString() };
             }
             else
             {
-                result.unclaimed = "0";
+                result.stakes = new StakeResult() { amount = "0", time = 0, unclaimed = "0" };
             }
+
+            // deprecated
+            result.stake = result.stakes.amount;
+            result.unclaimed = result.stakes.unclaimed;
 
             var validator = Nexus.GetValidatorType(address);
 
             var balanceList = new List<BalanceResult>();
-            foreach (var symbol in Nexus.Tokens)
+            var symbols = Nexus.GetTokens(Nexus.RootStorage);
+            var chains = Nexus.GetChains(Nexus.RootStorage);
+            foreach (var symbol in symbols)
             {
-                foreach (var chainName in Nexus.Chains)
+                foreach (var chainName in chains)
                 {
                     var chain = Nexus.GetChainByName(chainName);
                     var balance = chain.GetTokenBalance(chain.Storage, symbol, address);
@@ -673,7 +679,8 @@ namespace Phantasma.API
         {
             if (Hash.TryParse(blockHash, out var hash))
             {
-                foreach (var chainName in Nexus.Chains)
+                var chains = Nexus.GetChains(Nexus.RootStorage);
+                foreach (var chainName in chains)
                 {
                     var chain = Nexus.GetChainByName(chainName);
                     var block = chain.GetBlockByHash(hash);
@@ -693,13 +700,14 @@ namespace Phantasma.API
         {
             if (Hash.TryParse(blockHash, out var hash))
             {
-                foreach (var chainName in Nexus.Chains)
+                var chains = Nexus.GetChains(Nexus.RootStorage);
+                foreach (var chainName in chains)
                 {
                     var chain = Nexus.GetChainByName(chainName);
                     var block = chain.GetBlockByHash(hash);
                     if (block != null)
                     {
-                        return new SingleResult() { value = block.ToByteArray().Encode() };
+                        return new SingleResult() { value = block.ToByteArray(true).Encode() };
                     }
                 }
             }
@@ -756,7 +764,7 @@ namespace Phantasma.API
 
             if (block != null)
             {
-                return new SingleResult { value = block.ToByteArray().Encode() };
+                return new SingleResult { value = block.ToByteArray(true).Encode() };
             }
 
             return new ErrorResult { error = "block not found" };
@@ -875,7 +883,8 @@ namespace Phantasma.API
             }
             else
             {
-                foreach (var chainName in Nexus.Chains)
+                var chains = Nexus.GetChains(Nexus.RootStorage);
+                foreach (var chainName in chains)
                 {
                     var chain = Nexus.GetChainByName(chainName);
                     var txHashes = chain.GetTransactionHashesForAddress(address);
@@ -1072,7 +1081,8 @@ namespace Phantasma.API
 
             var objs = new List<object>();
 
-            foreach (var chainName in Nexus.Chains)
+            var chains = Nexus.GetChains(Nexus.RootStorage);
+            foreach (var chainName in chains)
             {
                 var chain = Nexus.GetChainByName(chainName);
                 var single = FillChain(chain);
@@ -1088,7 +1098,8 @@ namespace Phantasma.API
         {
             var tokenList = new List<TokenResult>();
 
-            foreach (var token in Nexus.Tokens)
+            var symbols = Nexus.GetTokens(Nexus.RootStorage);
+            foreach (var token in symbols)
             {
                 var entry = FillToken(token);
                 tokenList.Add(entry);
@@ -1096,7 +1107,8 @@ namespace Phantasma.API
 
             var platformList = new List<PlatformResult>();
 
-            foreach (var platform in Nexus.Platforms)
+            var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
+            foreach (var platform in platforms)
             {
                 var info = Nexus.GetPlatformInfo(platform);
 
@@ -1110,13 +1122,14 @@ namespace Phantasma.API
                 }).ToArray();
                 entry.chain = DomainExtensions.GetChainAddress(info).Text;
                 entry.fuel = info.Symbol;
-                entry.tokens = Nexus.Tokens.Where(x => Nexus.GetTokenInfo(x).Platform == platform).ToArray();
+                entry.tokens = symbols.Where(x => Nexus.GetTokenInfo(x).Platform == platform).ToArray();
                 platformList.Add(entry);
             }
 
             var chainList = new List<ChainResult>();
 
-            foreach (var chainName in Nexus.Chains)
+            var chains = Nexus.GetChains(Nexus.RootStorage);
+            foreach (var chainName in chains)
             {
                 var chain = Nexus.GetChainByName(chainName);
                 var single = FillChain(chain);
@@ -1125,15 +1138,38 @@ namespace Phantasma.API
 
             var governance = (GovernancePair[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "governance", nameof(GovernanceContract.GetValues)).ToObject();
 
-            var masters = ((Address[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "stake", nameof(StakeContract.GetMasterAddresses)).ToObject()).Select(x => x.Text).ToArray();
+            var orgs = Nexus.GetOrganizations(Nexus.RootStorage);
 
-            return new NexusResult() {
+            var ses = ((LeaderboardRow[])Nexus.RootChain.InvokeContract(Nexus.RootChain.Storage, "ranking", nameof(RankingContract.GetRows), BombContract.SESLeaderboardName).ToObject()).ToArray();
+
+            return new NexusResult()
+            {
                 name = Nexus.Name,
                 tokens = tokenList.ToArray(),
                 platforms = platformList.ToArray(),
-                chains  = chainList.ToArray(),
-                masters = masters,
-                governance = governance.Select(x => new GovernanceResult() { name = x.Name, value = x.Value.ToString()}).ToArray()
+                chains = chainList.ToArray(),
+                organizations = orgs,
+                ses = ses.Select(x => new LeaderboardResult() { address = x.address.Text, value = x.score.ToString() }).ToArray(),
+                governance = governance.Select(x => new GovernanceResult() { name = x.Name, value = x.Value.ToString() }).ToArray()
+            };
+        }
+
+        [APIInfo(typeof(OrganizationResult), "Returns info about an organization.", false, 30)]
+        public IAPIResult GetOrganization(string ID)
+        {
+            if (!Nexus.OrganizationExists(Nexus.RootStorage, ID))
+            {
+                return new ErrorResult() { error = "invalid organization" };
+            }
+
+            var org = Nexus.GetOrganizationByName(Nexus.RootStorage, ID);
+            var members = org.GetMembers();
+
+            return new OrganizationResult()
+            {
+                id = ID,
+                name = org.Name,
+                members = members.Select(x => x.Text).ToArray(),
             };
         }
 
@@ -1142,7 +1178,8 @@ namespace Phantasma.API
         {
             var tokenList = new List<object>();
 
-            foreach (var token in Nexus.Tokens)
+            var symbols = Nexus.GetTokens(Nexus.RootStorage);
+            foreach (var token in symbols)
             {
                 var entry = FillToken(token);
                 tokenList.Add(entry);
@@ -1154,12 +1191,12 @@ namespace Phantasma.API
         [APIInfo(typeof(TokenResult), "Returns info about a specific token deployed in Phantasma.", false, 30)]
         public IAPIResult GetToken([APIParameter("Token symbol to obtain info", "SOUL")] string symbol)
         {
-            var token = Nexus.GetTokenInfo(symbol);
             if (!Nexus.TokenExists(symbol))
             {
                 return new ErrorResult() { error = "invalid token" };
             }
 
+            var token = Nexus.GetTokenInfo(symbol);
             var result = FillToken(symbol);
 
             return result;
@@ -1610,7 +1647,10 @@ namespace Phantasma.API
         {
             var platformList = new List<PlatformResult>();
 
-            foreach (var platform in Nexus.Platforms)
+            var platforms = Nexus.GetPlatforms(Nexus.RootStorage);
+            var symbols = Nexus.GetTokens(Nexus.RootStorage);
+
+            foreach (var platform in platforms)
             {
                 var info = Nexus.GetPlatformInfo(platform);
 
@@ -1624,7 +1664,7 @@ namespace Phantasma.API
                 }).ToArray();
                 entry.chain = DomainExtensions.GetChainAddress(info).Text;
                 entry.fuel = info.Symbol;
-                entry.tokens = Nexus.Tokens.Where(x => Nexus.GetTokenInfo(x).Platform == platform).ToArray();
+                entry.tokens = symbols.Where(x => Nexus.GetTokenInfo(x).Platform == platform).ToArray();
                 platformList.Add(entry);
             }
 
@@ -1735,7 +1775,7 @@ namespace Phantasma.API
             var oracleReader = Nexus.CreateOracleReader();
 
             var txswaps = swapList.
-                Select(x => new KeyValuePair<ChainSwap, InteropTransaction>(x, oracleReader.ReadTransactionFromOracle(x.sourcePlatform, x.sourceChain, x.sourceHash))).ToArray();
+                Select(x => new KeyValuePair<ChainSwap, InteropTransaction>(x, oracleReader.ReadTransaction(x.sourcePlatform, x.sourceChain, x.sourceHash))).ToArray();
 
             var swaps = txswaps.Where(x => x.Value.Transfers.Length > 0).
                 Select(x => new SwapResult()
