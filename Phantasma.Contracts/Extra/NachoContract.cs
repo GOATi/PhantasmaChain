@@ -4740,11 +4740,11 @@ namespace Phantasma.Contracts.Extra
             return list.All<NachoVersusInfo>();
         }
         
-        public int GetMatchMakerCount(BattleMode mode)
+        public BigInteger GetMatchMakerCount(BattleMode mode)
         {
             //var list = Storage.FindCollectionForContract<Address>(GLOBAL_MATCHMAKER_LIST);
             
-            int total = 0;
+            var total = new BigInteger(0);
             //int count = list.Count();
             var count = _globalMatchmakerList.Count();
             for (int i = 0; i < count; i++)
