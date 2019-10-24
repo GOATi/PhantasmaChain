@@ -1430,6 +1430,7 @@ namespace Phantasma.Tests
             simulator.EndBlock();
             
             var currentValidatorIndex = 1;
+            PhantasmaKeys previousValidator = null; 
 
             for (int i = 0; i < validatorSwitchAttempts; i++)
             {
@@ -1437,10 +1438,11 @@ namespace Phantasma.Tests
 
                 // here we skip to a time where its supposed to be the turn of the given validator index
 
-                SkipToValidatorIndex(simulator, currentValidatorIndex);
-                //simulator.CurrentTime = (DateTime)simulator.Nexus.GenesisTime + TimeSpan.FromSeconds(120 * 500 + 130);
+                var currentValidatorAddress = simulator.Nexus.RootChain.GetValidator(nexus.RootStorage, simulator.CurrentTime);
 
-                var currentValidator = currentValidatorIndex == 0 ? owner : secondValidator;
+                var isValidatorTheOwner = currentValidatorAddress == owner.Address;
+                var currentValidator = isValidatorTheOwner ? owner : secondValidator;
+                var validatorChanged = currentValidator != previousValidator;
 
                 simulator.BeginBlock(currentValidator);
                 simulator.GenerateTransfer(testUserA, testUserB.Address, nexus.RootChain, DomainSettings.StakingTokenSymbol, transferAmount);
@@ -1455,16 +1457,15 @@ namespace Phantasma.Tests
                 Assert.IsTrue(finalBalance == initialBalance + transferAmount);
 
                 currentValidatorIndex = currentValidatorIndex == 1 ? 0 : 1; //toggle the current validator index
-            }
 
-            // Send from user A to user B
-            // NOTE this block is baked by the second validator
-            
+                previousValidator = currentValidator;
+            }
         }
 
-        private void SkipToValidatorIndex(NexusSimulator simulator, int i)
+        /*private void SkipToValidatorIndex(NexusSimulator simulator, int i)
         {
             uint skippedSeconds = 0;
+            
             var genesisBlock = simulator.Nexus.GetGenesisBlock();
             DateTime genesisTime = genesisBlock.Timestamp;
             var diff = (simulator.CurrentTime - genesisTime).Seconds;
@@ -1478,7 +1479,7 @@ namespace Phantasma.Tests
             }
 
             simulator.CurrentTime = simulator.CurrentTime.AddSeconds(skippedSeconds);
-        }
+        }*/
 
         [TestMethod]
         public void GasFeeCalculation()
